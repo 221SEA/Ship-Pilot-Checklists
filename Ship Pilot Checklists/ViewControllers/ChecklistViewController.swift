@@ -219,9 +219,11 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
     private var recordingTimer: Timer?
 
     // MARK: — Location
-
+    
+    private var isSearchingForGPS = false
     private let locationManager = CLLocationManager()
     private var latestLocation: CLLocation?           // store most recent location
+    private var hasAddedLocationToNotes = false
 
     // MARK: — Helpers
     private func updateNotesTextViewTheme() {
@@ -279,9 +281,8 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
         title = checklist?.title ?? customChecklist?.title ?? "Checklist"
         view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
 
-        // 3) Location permission
-        locationManager.delegate = self
-        locationManager.requestWhenInUseAuthorization()
+        // 3) Location permission with GPS optimization
+        setupLocationManager()
 
         // 4) Add Notes subview BEFORE the tableView, so constraints won’t crash
         setupNotesField()
@@ -313,6 +314,14 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
         navigationController?.navigationBar.layoutIfNeeded()
     }
 
+    private func setupLocationManager() {
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation // GPS-level accuracy
+        locationManager.distanceFilter = kCLDistanceFilterNone
+        locationManager.requestWhenInUseAuthorization()
+    }
+    
+    
     // MARK: — Trait Collection Changes (Dark/Light Mode)
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -755,24 +764,67 @@ extension ChecklistViewController {
     // MARK: — Add Location to Notes
     
     @objc private func addLocationToNotes() {
-        locationManager.requestLocation()
+        isSearchingForGPS = true
+        hasAddedLocationToNotes = false
+        locationManager.startUpdatingLocation()
+        
+        // Set a 30-second timeout for GPS acquisition
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
+            guard let self = self else { return }
+            
+            if self.isSearchingForGPS {
+                self.locationManager.stopUpdatingLocation()
+                self.isSearchingForGPS = false
+                self.showAlert(title: "GPS Search Timed Out",
+                               message: "Unable to get a GPS fix within 30 seconds. Make sure you're in an area with clear sky view and try again.")
+            }
+        }
+    }
+    
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            // Good to go - GPS is available
+            break
+        case .denied, .restricted:
+            showAlert(title: "Location Access Denied",
+                     message: "Please enable location access in Settings to use GPS coordinates.")
+        case .notDetermined:
+            locationManager.requestWhenInUseAuthorization()
+        @unknown default:
+            break
+        }
     }
     
     func locationManager(_ manager: CLLocationManager,
                          didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.last else { return }
-        latestLocation = loc
-        let lat = loc.coordinate.latitude
-        let lon = loc.coordinate.longitude
-        let time = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .short)
-        let line = String(format: "\nLocation: %.4f° N, %.4f° W at %@", lat, lon, time)
-        if notesTextView.text == "Notes..." {
-            notesTextView.text = ""
-            notesTextView.textColor = ThemeManager.titleColor(for: traitCollection)
-            notesTextView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+        
+        // For remote marine areas, accept locations within 100m accuracy
+        if loc.horizontalAccuracy < 100 && loc.horizontalAccuracy > 0 {
+            // Only add to notes if we haven't already done so
+            if !hasAddedLocationToNotes {
+                latestLocation = loc
+                isSearchingForGPS = false
+                hasAddedLocationToNotes = true
+                
+                let lat = loc.coordinate.latitude
+                let lon = loc.coordinate.longitude
+                let time = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .short)
+                let accuracy = String(format: "±%.0fm", loc.horizontalAccuracy)
+                let line = String(format: "\nLocation: %.4f° N, %.4f° W (%@) at %@", lat, lon, accuracy, time)
+                
+                if notesTextView.text == "Notes..." {
+                    notesTextView.text = ""
+                    notesTextView.textColor = ThemeManager.titleColor(for: traitCollection)
+                    notesTextView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+                }
+                notesTextView.text += line
+                updateNotesTextViewTheme()
+                
+                locationManager.stopUpdatingLocation()
+            }
         }
-        notesTextView.text += line
-        updateNotesTextViewTheme()
     }
     
     func locationManager(_ manager: CLLocationManager,

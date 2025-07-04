@@ -259,9 +259,15 @@ extension CustomChecklistEditorViewController: UITableViewDataSource, UITableVie
         cell.showsReorderControl = false
 
         // If user edits text, update our in-memory model
+        // REPLACE WITH THIS:
         cell.textChanged = { [weak self] newText in
-            self?.checklist.sections[indexPath.section]
-                   .items[indexPath.row].title = newText
+            guard let self = self,
+                  let currentIndexPath = self.tableView.indexPath(for: cell),
+                  currentIndexPath.section < self.checklist.sections.count,
+                  currentIndexPath.row < self.checklist.sections[currentIndexPath.section].items.count else {
+                return
+            }
+            self.checklist.sections[currentIndexPath.section].items[currentIndexPath.row].title = newText
         }
 
         // If user taps delete, remove that item

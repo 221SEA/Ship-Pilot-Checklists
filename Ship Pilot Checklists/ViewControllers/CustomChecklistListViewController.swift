@@ -72,9 +72,9 @@ class CustomChecklistListViewController: UIViewController,
         // 8) Constraints: button pinned to top, table pinned below it
         NSLayoutConstraint.activate([
             // “Add New Checklist +” button at very top (behind nav‐bar if opaque)
-            addNewButton.topAnchor.constraint(equalTo: view.topAnchor),
-            addNewButton.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            addNewButton.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                addNewButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+                addNewButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+                addNewButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
 
             // tableView sits directly under the button, fills remainder
             tableView.topAnchor.constraint(equalTo: addNewButton.bottomAnchor),

@@ -62,6 +62,30 @@ public struct IncludedChecklists {
         ),
 
         ChecklistInfo(
+            title: "Anchor: Dragging",
+            category: .emergency,
+            sections: [
+                ChecklistSection(title: "High Priority", items: [
+                    ChecklistItem(title: "Take notes / start an audio recording", isChecked: false),
+                    ChecklistItem(title: "Stop external operations (tendering, cargo loading)", isChecked: false),
+                    ChecklistItem(title: "Bring engine(s), thrusters online", isChecked: false),
+                    ChecklistItem(title: "Assess drag rate and direction", isChecked: false),
+                    ChecklistItem(title: "Calculate time to danger (shoals, other vessels)", isChecked: false),
+                    ChecklistItem(title: "IF sea room permits, increase scope & determine if that slows rate of dragging", isChecked: false),
+                    ChecklistItem(title: "If necessary, apply engine(s) ahead and rudder towards anchor location to reduce strain", isChecked: false),
+                    ChecklistItem(title: "Consider weighing anchor: close proximity to danger, anchor continues to drag despite increase in scope, weather worsens", isChecked: false),
+                    ChecklistItem(title: "Consider outside maneuvering assistance [tugs, other vessels]", isChecked: false)
+                ]),
+                ChecklistSection(title: "Medium Priority", items: [
+                    ChecklistItem(title: "Consider emergency or security broadcast (depending on conditions)", isChecked: false),
+                    ChecklistItem(title: "Close watertight doors, if applicable", isChecked: false),
+                ]),
+                ChecklistSection(title: "Low Priority", items: [
+                    ChecklistItem(title: "Contact CG / local authorities if warranted", isChecked: false)
+                ])
+            ]
+        ),
+        ChecklistInfo(
             title: "Blackout",
             category: .emergency,
             sections: [
@@ -457,6 +481,31 @@ public struct IncludedChecklists {
             ]
         ),
 
+        ChecklistInfo(
+            title: "Mooring: Breakaway",
+            category: .emergency,
+            sections: [
+                ChecklistSection(title: "High Priority", items: [
+                    ChecklistItem(title: "Take notes / start an audio recording", isChecked: false),
+                    ChecklistItem(title: "Stop external operations (tendering, cargo loading)", isChecked: false),
+                    ChecklistItem(title: "Retrieve or remove gangway(s)", isChecked: false),
+                    ChecklistItem(title: "Bring engine(s), thrusters online; get realistic ETA for propulsion", isChecked: false),
+                    ChecklistItem(title: "Bring steering online", isChecked: false),
+                    ChecklistItem(title: "Assess vessel set and drift", isChecked: false),
+                    ChecklistItem(title: "Calculate time to danger (shoals, other vessels); verify UKC", isChecked: false),
+                    ChecklistItem(title: "Consider outside maneuvering assistance [tugs, other vessels]: engines not readily available, high wind conditions may overwhelm engine capability even after online, traffic density is high", isChecked: false),
+                    ChecklistItem(title: "Consider dropping anchor: sufficient depth, engines not readily available, not in a cable area", isChecked: false),
+                ]),
+                ChecklistSection(title: "Medium Priority", items: [
+                    ChecklistItem(title: "Consider emergency or security broadcast (depending on conditions)", isChecked: false),
+                    ChecklistItem(title: "Close watertight doors, if applicable", isChecked: false),
+                ]),
+                ChecklistSection(title: "Low Priority", items: [
+                    ChecklistItem(title: "Contact CG / local authorities if warranted", isChecked: false),
+                    ChecklistItem(title: "Contact port authorities / ship's agent to coordinate return to berth", isChecked: false)
+                ])
+            ]
+        ),
         ChecklistInfo(
             title: "Tsunami Warning",
             category: .emergency,
