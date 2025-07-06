@@ -66,12 +66,12 @@ class ContactCell: UITableViewCell {
         categoryLabel.numberOfLines = 1
         
         // Configure buttons
-        let callConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
-        callButton.setImage(UIImage(systemName: "phone.fill", withConfiguration: callConfig), for: .normal)
+        let callConfig = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+        callButton.setImage(UIImage(systemName: "phone", withConfiguration: callConfig), for: .normal)
         callButton.addTarget(self, action: #selector(callTapped), for: .touchUpInside)
         
-        let textConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
-        textButton.setImage(UIImage(systemName: "message.fill", withConfiguration: textConfig), for: .normal)
+        let textConfig = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+        textButton.setImage(UIImage(systemName: "message", withConfiguration: textConfig), for: .normal)
         textButton.addTarget(self, action: #selector(textTapped), for: .touchUpInside)
         
         // Configure button stack
