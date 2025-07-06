@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// A single checklist row (title + checkbox + timestamp + optional quick-note + up to two photos)
+/// A single checklist row ( title + checkbox + timestamp + optional quick-note + up to two photos)
 public struct ChecklistItem: Codable {
     public var title: String
     public var isChecked: Bool

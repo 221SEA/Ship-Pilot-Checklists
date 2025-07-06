@@ -59,6 +59,7 @@ class ContactEditorViewController: UIViewController, CNContactPickerDelegate {
         super.viewDidLoad()
         setupUI()
         loadContactData()
+        setupKeyboardObservers()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -133,6 +134,42 @@ class ContactEditorViewController: UIViewController, CNContactPickerDelegate {
         let tintColor = ThemeManager.titleColor(for: traitCollection)
         navigationItem.leftBarButtonItem?.tintColor = tintColor
         navigationItem.rightBarButtonItem?.tintColor = tintColor
+    }
+    
+    // MARK: - Keyboard Handling
+    private func setupKeyboardObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillShow(_:)),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillHide(_:)),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
+    }
+
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+        
+        let keyboardHeight = keyboardFrame.height
+        let contentInsets = UIEdgeInsets(top: 0, left: 0, bottom: keyboardHeight, right: 0)
+        
+        tableView.contentInset = contentInsets
+        tableView.scrollIndicatorInsets = contentInsets
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        tableView.contentInset = .zero
+        tableView.scrollIndicatorInsets = .zero
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - Data
