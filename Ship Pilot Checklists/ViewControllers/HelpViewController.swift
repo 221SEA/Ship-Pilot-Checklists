@@ -108,46 +108,52 @@ class HelpViewController: UIViewController {
             body.append(line)
         }
         
-        // Emergency section
-        addTitle("EMERGENCY QUICK START")
-        addBullet("text.bubble", text: "Emergency SMS: Tap message bubble → select contacts → vessel name → send")
-        addBullet("globe", text: "Add Location: Tap globe icon to add GPS coordinates to notes")
-        addBullet("water.waves.and.arrow.trianglehead.up", text: "Get Tide Data: Tap wave icon after adding location")
-        addBullet("wind", text: "Get Wind Data: Tap wind icon after adding location")
-        addBullet("doc.text", text: "Generate Report: Tap document icon → vessel name → create PDF")
+        // Emergency Features
+        addTitle("QUICK START - ANY CHECKLIST")
+        addBullet("text.bubble", text: "Emergency SMS: Tap message icon → select contacts → enter vessel → send")
+        addBullet("globe", text: "GPS Location: Tap globe to add coordinates to notes")
+        addBullet("water.waves", text: "Tide Data: Add location first, then tap tide icon")
+        addBullet("wind", text: "Wind Data: Add location first, then tap wind icon")
+        addBullet("doc.text", text: "PDF Report: Tap document icon → enter vessel → sign")
         
-        // Basic use
-        addTitle("BASIC CHECKLIST USE")
-        addBullet("checkmark.square", text: "Tap items to check them off (timestamps automatically)")
-        addBullet("pencil", text: "Tap pencil icon to add notes to any item")
-        addBullet("photo", text: "Tap photo icon to add photos (up to 4 per item)")
-        addBullet("star", text: "Swipe right to favorite any checklist")
-        addBullet("square.and.arrow.up", text: "Swipe left on Custom Checklists to share with other pilots")
+        // Using Checklists
+        addTitle("USING CHECKLISTS")
+        addBullet("checkmark.square", text: "Tap checkbox to mark complete (auto-timestamps)")
+        addBullet("pencil", text: "Add notes to any item")
+        addBullet("photo", text: "Add photos (max 4 per item)")
+        addBullet("mic", text: "Record voice memos")
+        addBullet("eraser", text: "Clear all data (cannot undo)")
         
-        // Setup
-        addTitle("SETUP & PROFILE")
-        addBullet("person.crop.circle", text: "Set your name in Profile (top right)")
-        addBullet("phone", text: "Add emergency contacts in Profile")
-        addBullet("location", text: "Enable location services for GPS/tide/wind features")
+        // Navigation
+        addTitle("NAVIGATION")
+        addBullet("star", text: "Swipe right or press star on any checklist to favorite")
+        addBullet("magnifyingglass", text: "Search all checklists from main menu")
+        addBullet("sun.max", text: "Toggle day/night mode")
+        addBullet("chevron.up.chevron.down", text: "Tap section headers to expand/collapse")
         
-        // Custom checklists
+        // Setup Requirements
+        addTitle("INITIAL SETUP")
+        addBullet("person", text: "Add your name in Profile (required for SMS/PDF)")
+        addBullet("phone", text: "Add emergency contacts in Contacts")
+        addBullet("location", text: "Allow location access for GPS features")
+        
+        // Custom Checklists
         addTitle("CUSTOM CHECKLISTS")
-        addBullet("plus", text: "Create new checklists with 'Add New Checklist +'")
-        addBullet("pencil.and.list.clipboard", text: "Convert any included checklist to custom (tap clipboard icon)")
-        addBullet("square.and.arrow.up", text: "Share custom checklists: swipe left → Share → send .shipchecklist file")
-        addBullet("square.and.arrow.down", text: "Import shared checklists: tap received .shipchecklist file")
+        addBullet("plus", text: "Create: Tap 'Add New Checklist +'")
+        addBullet("pencil.and.list.clipboard", text: "Convert: Tap clipboard icon on any included checklist")
+        addBullet("square.and.arrow.up", text: "Share: Swipe left → Share → send .shipchecklist file")
+        addBullet("square.and.arrow.down", text: "Import: Open received .shipchecklist files")
         
-        // Features
-        addTitle("FEATURES")
-        addBullet("mic", text: "Voice Memos: Tap mic icon to record audio notes")
-        addBullet("moon", text: "Night Mode: Toggle sun/moon icon for dark conditions")
-        addBullet("star", text: "Favorites: Quick access to most-used checklists")
-        addBullet("eraser", text: "Clear Checklist: Eraser icon removes all data (cannot be undone)")
+        // Contacts System
+        addTitle("CONTACTS")
+        addBullet("person.2", text: "Organized by categories (Emergency, Coast Guard, etc.)")
+        addBullet("phone", text: "Tap to call, swipe for more options")
+        addBullet("plus.circle", text: "Import from phone contacts or add manually")
         
-        // Data sources
-        addTitle("DATA SOURCES")
+        // Data & Privacy
+        addTitle("DATA")
         body.append(NSAttributedString(
-            string: "Tide predictions: NOAA Tides & Currents\nWind forecasts: National Weather Service\nGPS coordinates: Device location services\n\n",
+            string: "• All data stored locally on device\n• No internet required (except tide/wind)\n• Tide: NOAA\n• Wind: National Weather Service\n\n",
             attributes: [
                 .font: font,
                 .foregroundColor: textColor,
@@ -158,7 +164,7 @@ class HelpViewController: UIViewController {
         // Support
         addTitle("SUPPORT")
         body.append(NSAttributedString(
-            string: "Contact: captjillr+app@gmail.com\n\n",
+            string: "captjillr+app@gmail.com\n\n",
             attributes: [
                 .font: font,
                 .foregroundColor: textColor,
