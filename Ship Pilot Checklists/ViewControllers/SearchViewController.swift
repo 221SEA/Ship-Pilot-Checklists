@@ -26,6 +26,38 @@ private enum SearchResult {
         case .custom(_): return "Custom Checklist"
         }
     }
+    /// Returns true if this checklist contains the search term in its title or any item
+    func matches(searchTerm: String) -> Bool {
+        let lower = searchTerm.lowercased()
+        
+        // Check title first
+        if title.lowercased().contains(lower) {
+            return true
+        }
+        
+        // Check all items in all sections
+        switch self {
+        case .builtIn(let info):
+            for section in info.sections {
+                for item in section.items {
+                    if item.title.lowercased().contains(lower) {
+                        return true
+                    }
+                }
+            }
+            
+        case .custom(let custom):
+            for section in custom.sections {
+                for item in section.items {
+                    if item.title.lowercased().contains(lower) {
+                        return true
+                    }
+                }
+            }
+        }
+        
+        return false
+    }
     
     /// Instantiates and pushes the appropriate ChecklistViewController onto
     /// the given navigation controller.
@@ -60,7 +92,7 @@ class SearchViewController: UIViewController {
     private let resultsTableView: UITableView = {
         let tv = UITableView()
         tv.translatesAutoresizingMaskIntoConstraints = false
-        tv.register(UITableViewCell.self, forCellReuseIdentifier: "SearchResultCell")
+        
         tv.keyboardDismissMode = .onDrag
         return tv
     }()
@@ -231,11 +263,18 @@ class SearchViewController: UIViewController {
             instructionLabel.isHidden = false
             instructionLabel.text = "Search \(allResults.count) checklists (\(allResults.filter { if case .builtIn = $0 { return true }; return false }.count) included, \(allResults.filter { if case .custom = $0 { return true }; return false }.count) custom)"
         } else {
-            let lower = trimmed.lowercased()
+            // Use the new matches method that searches both titles and items
             filteredResults = allResults.filter { result in
-                result.title.lowercased().contains(lower)
+                result.matches(searchTerm: trimmed)
             }
-            instructionLabel.isHidden = true
+            
+            // Update instruction label to show if no results
+            if filteredResults.isEmpty {
+                instructionLabel.isHidden = false
+                instructionLabel.text = "No checklists found containing '\(trimmed)'"
+            } else {
+                instructionLabel.isHidden = true
+            }
         }
         
         resultsTableView.reloadData()
@@ -272,13 +311,58 @@ extension SearchViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView,
                    cellForRowAt indexPath: IndexPath) -> UITableViewCell
     {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "SearchResultCell", for: indexPath)
+        
+        let cell = tableView.dequeueReusableCell(withIdentifier: "SearchResultCell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "SearchResultCell")
         let result = filteredResults[indexPath.row]
         
-        // Configure cell with title and subtitle
+        // Configure cell with title
         cell.textLabel?.text = result.title
-        cell.detailTextLabel?.text = result.subtitle
         cell.accessoryType = .disclosureIndicator
+        
+        // Show subtitle - either the type or which item matched
+        if let searchText = searchBar.text?.trimmingCharacters(in: .whitespacesAndNewlines), !searchText.isEmpty {
+            let lower = searchText.lowercased()
+            
+            // Check if title matches
+            if result.title.lowercased().contains(lower) {
+                cell.detailTextLabel?.text = result.subtitle
+            } else {
+                // Find which item matched
+                var matchedItem: String?
+                
+                switch result {
+                case .builtIn(let info):
+                    for section in info.sections {
+                        for item in section.items {
+                            if item.title.lowercased().contains(lower) {
+                                matchedItem = item.title
+                                break
+                            }
+                        }
+                        if matchedItem != nil { break }
+                    }
+                    
+                case .custom(let custom):
+                    for section in custom.sections {
+                        for item in section.items {
+                            if item.title.lowercased().contains(lower) {
+                                matchedItem = item.title
+                                break
+                            }
+                        }
+                        if matchedItem != nil { break }
+                    }
+                }
+                
+                if let matched = matchedItem {
+                    cell.detailTextLabel?.text = "Contains: \(matched)"
+                } else {
+                    cell.detailTextLabel?.text = result.subtitle
+                }
+            }
+        } else {
+            cell.detailTextLabel?.text = result.subtitle
+        }
         
         // Apply theming
         cell.textLabel?.textColor = ThemeManager.titleColor(for: traitCollection)

@@ -178,7 +178,7 @@ import Photos
 import PhotosUI
 
 
-class ChecklistViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, CLLocationManagerDelegate, MFMessageComposeViewControllerDelegate, ContactSelectionDelegate, UITextViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, PHPickerViewControllerDelegate {
+class ChecklistViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, CLLocationManagerDelegate, MFMessageComposeViewControllerDelegate, ContactSelectionDelegate, UITextViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, PHPickerViewControllerDelegate, UIDocumentPickerDelegate {
 
     // MARK: — Data
 
@@ -265,6 +265,12 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
 
     /// Store the IndexPath of the cell whose camera was tapped
     private var pendingPhotoIndexPath: IndexPath?
+    private var notesContainerView = UIView()
+    private var notesToggleButton = UIButton(type: .system)
+    private var notesHeightConstraint: NSLayoutConstraint!
+    private var isNotesCollapsed = false
+    private let collapsedNotesHeight: CGFloat = 44
+    private let expandedNotesHeight: CGFloat = 180
 
     // MARK: — Lifecycle
 
@@ -354,6 +360,8 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
             notesTextView.textColor = ThemeManager.titleColor(for: fakeTraitCollection)
         }
         notesTextView.backgroundColor = ThemeManager.backgroundColor(for: fakeTraitCollection)
+        // Update toggle button color
+        notesToggleButton.tintColor = ThemeManager.titleColor(for: fakeTraitCollection)
 
         // Refresh checkbox rows
         tableView.reloadData()
@@ -372,28 +380,87 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
     // MARK: — Setup Notes Field
 
     private func setupNotesField() {
+        // Container view for notes
+        notesContainerView.translatesAutoresizingMaskIntoConstraints = false
+        notesContainerView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+        view.addSubview(notesContainerView)
+        
+        // Toggle button
+        notesToggleButton.translatesAutoresizingMaskIntoConstraints = false
+        notesToggleButton.setTitle("Notes", for: .normal)
+        notesToggleButton.setImage(UIImage(systemName: "chevron.up"), for: .normal)
+        notesToggleButton.contentHorizontalAlignment = .left
+        notesToggleButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
+        notesToggleButton.tintColor = ThemeManager.titleColor(for: traitCollection)
+        notesToggleButton.addTarget(self, action: #selector(toggleNotes), for: .touchUpInside)
+        notesContainerView.addSubview(notesToggleButton)
+        
+        // Notes text view
         notesTextView.translatesAutoresizingMaskIntoConstraints = false
-        notesTextView.font               = .systemFont(ofSize: 16)
-        notesTextView.layer.borderWidth  = 1
+        notesTextView.font = .systemFont(ofSize: 16)
+        notesTextView.layer.borderWidth = 1
         notesTextView.layer.cornerRadius = 8
-        notesTextView.layer.borderColor  = UIColor.lightGray.cgColor
-        notesTextView.delegate           = self
-
-        // Start with placeholder
+        notesTextView.layer.borderColor = UIColor.lightGray.cgColor
+        notesTextView.delegate = self
         notesTextView.text = "Notes..."
         notesTextView.textColor = .secondaryLabel
         notesTextView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
-
-        view.addSubview(notesTextView)
-
+        
+        // Add toolbar with Done button
+        let toolbar = UIToolbar()
+        toolbar.sizeToFit()
+        let flexSpace = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+        let doneButton = UIBarButtonItem(title: "Done", style: .done, target: self, action: #selector(dismissKeyboard))
+        doneButton.tintColor = ThemeManager.titleColor(for: traitCollection)
+        toolbar.items = [flexSpace, doneButton]
+        notesTextView.inputAccessoryView = toolbar
+        
+        notesContainerView.addSubview(notesTextView)
+        
+        // Create height constraint for animation
+        notesHeightConstraint = notesContainerView.heightAnchor.constraint(equalToConstant: expandedNotesHeight + 44)
+        
         NSLayoutConstraint.activate([
-            notesTextView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            notesTextView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            notesTextView.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor, constant: -8),
-            notesTextView.heightAnchor.constraint(equalToConstant: 180)
+            // Container constraints
+            notesContainerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            notesContainerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            notesContainerView.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor),
+            notesHeightConstraint,
+            
+            // Toggle button constraints
+            notesToggleButton.topAnchor.constraint(equalTo: notesContainerView.topAnchor, constant: 8),
+            notesToggleButton.leadingAnchor.constraint(equalTo: notesContainerView.leadingAnchor, constant: 16),
+            notesToggleButton.trailingAnchor.constraint(equalTo: notesContainerView.trailingAnchor, constant: -16),
+            notesToggleButton.heightAnchor.constraint(equalToConstant: 28),
+            
+            // Text view constraints
+            notesTextView.topAnchor.constraint(equalTo: notesToggleButton.bottomAnchor, constant: 8),
+            notesTextView.leadingAnchor.constraint(equalTo: notesContainerView.leadingAnchor, constant: 16),
+            notesTextView.trailingAnchor.constraint(equalTo: notesContainerView.trailingAnchor, constant: -16),
+            notesTextView.bottomAnchor.constraint(equalTo: notesContainerView.bottomAnchor, constant: -8)
         ])
     }
-
+    @objc private func toggleNotes() {
+        isNotesCollapsed.toggle()
+        
+        UIView.animate(withDuration: 0.3) {
+            if self.isNotesCollapsed {
+                self.notesHeightConstraint.constant = self.collapsedNotesHeight
+                self.notesToggleButton.setImage(UIImage(systemName: "chevron.down"), for: .normal)
+                self.notesTextView.alpha = 0
+            } else {
+                self.notesHeightConstraint.constant = self.expandedNotesHeight + 44
+                self.notesToggleButton.setImage(UIImage(systemName: "chevron.up"), for: .normal)
+                self.notesTextView.alpha = 1
+            }
+            self.view.layoutIfNeeded()
+        }
+        
+        // Dismiss keyboard when collapsing
+        if isNotesCollapsed {
+            notesTextView.resignFirstResponder()
+        }
+    }
     // MARK: — Setup TableView
 
     private func setupTableView() {
@@ -408,7 +475,7 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: notesTextView.topAnchor, constant: -8)
+            tableView.bottomAnchor.constraint(equalTo: notesContainerView.topAnchor, constant: -8)
         ])
 
         tableView.estimatedRowHeight = 80
@@ -507,6 +574,46 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
                       message: "Please add contacts in Settings first.")
             return
         }
+        
+        // Check if location/tide/wind data is missing
+        var missingData: [String] = []
+        if latestLocation == nil {
+            missingData.append("GPS location (press globe button)")
+        }
+        if lastFetchedTideLines == nil {
+            missingData.append("Tide data (press water/arrow button)")
+        }
+        if lastFetchedWindLines == nil {
+            missingData.append("Wind data (press wind button)")
+        }
+        
+        if !missingData.isEmpty {
+            let message = "Your emergency SMS will be more helpful with:\n\n" + missingData.joined(separator: "\n") + "\n\nWould you like to add this data first?"
+            
+            let alert = UIAlertController(
+                title: "Enhance Emergency SMS",
+                message: message,
+                preferredStyle: .alert
+            )
+            
+            alert.addAction(UIAlertAction(title: "Add Data First", style: .default) { _ in
+                // Could potentially auto-trigger the first missing data fetch here
+                if self.latestLocation == nil {
+                    self.addLocationToNotes()
+                }
+            })
+            
+            alert.addAction(UIAlertAction(title: "Send Without Data", style: .cancel) { _ in
+                self.proceedWithEmergencyContacts()
+            })
+            
+            present(alert, animated: true)
+        } else {
+            proceedWithEmergencyContacts()
+        }
+    }
+    private func proceedWithEmergencyContacts() {
+        let allContacts = loadContacts()
         let picker = ContactSelectionViewController(style: .insetGrouped)
         picker.contacts = allContacts
         picker.delegate = self
@@ -788,7 +895,7 @@ extension ChecklistViewController {
             break
         case .denied, .restricted:
             showAlert(title: "Location Access Denied",
-                     message: "Please enable location access in Settings to use GPS coordinates.")
+                      message: "Please enable location access in Settings to use GPS coordinates.")
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
         @unknown default:
@@ -998,31 +1105,68 @@ extension ChecklistViewController {
     }
     
     private func startRecording() {
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(.playAndRecord, mode: .default)
-            try session.setActive(true)
-            let fileURL = FileManager.default
-                .urls(for: .documentDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("VoiceMemo_\(UUID().uuidString.prefix(6)).m4a")
-            let settings: [String: Any] = [
-                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-                AVSampleRateKey: 12000,
-                AVNumberOfChannelsKey: 1,
-                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
-            ]
-            audioRecorder = try AVAudioRecorder(url: fileURL, settings: settings)
-            audioRecorder?.record()
-            isRecording = true
-            recordingStartTime = Date()
-            micButton.tintColor = .systemRed
-            recordingTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-                guard let self = self, let start = self.recordingStartTime else { return }
-                let sec = Int(Date().timeIntervalSince(start))
-                self.title = String(format: "Recording… %02d:%02d", sec/60, sec%60)
+        // Show recording indicator briefly
+        let recordingAlert = UIAlertController(
+            title: "🔴 Recording Started",
+            message: "Voice memo in progress.\n\nTap the mic button again to stop recording.",
+            preferredStyle: .alert
+        )
+        
+        recordingAlert.addAction(UIAlertAction(title: "Continue", style: .default) { _ in
+            // Alert dismissed, recording continues
+        })
+        
+        present(recordingAlert, animated: true) {
+            // Start actual recording after presenting the alert
+            let session = AVAudioSession.sharedInstance()
+            do {
+                try session.setCategory(.playAndRecord, mode: .default)
+                try session.setActive(true)
+                
+                // Create filename with checklist name and timestamp
+                let checklistName = (self.checklist?.title ?? self.customChecklist?.title ?? "Checklist")
+                    .replacingOccurrences(of: "/", with: "-")
+                    .replacingOccurrences(of: " ", with: "_")
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyyMMdd_HHmmss"
+                let timestamp = dateFormatter.string(from: Date())
+                let filename = "\(checklistName)_VoiceMemo_\(timestamp).m4a"
+                
+                let fileURL = FileManager.default
+                    .urls(for: .documentDirectory, in: .userDomainMask)[0]
+                    .appendingPathComponent(filename)
+                
+                let settings: [String: Any] = [
+                    AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+                    AVSampleRateKey: 12000,
+                    AVNumberOfChannelsKey: 1,
+                    AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+                ]
+                
+                self.audioRecorder = try AVAudioRecorder(url: fileURL, settings: settings)
+                self.audioRecorder?.record()
+                self.isRecording = true
+                self.recordingStartTime = Date()
+                self.micButton.tintColor = .systemRed
+                
+                // Update title bar with recording timer
+                self.recordingTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+                    guard let start = self.recordingStartTime else { return }
+                    let sec = Int(Date().timeIntervalSince(start))
+                    self.title = String(format: "Recording… %02d:%02d", sec/60, sec%60)
+                }
+                
+                // Auto-dismiss the alert after 2 seconds
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    if self.presentedViewController is UIAlertController {
+                        self.dismiss(animated: true)
+                    }
+                }
+            } catch {
+                recordingAlert.dismiss(animated: true) {
+                    self.showAlert(title: "Recording Error", message: error.localizedDescription)
+                }
             }
-        } catch {
-            showAlert(title: "Recording Error", message: error.localizedDescription)
         }
     }
     
@@ -1032,11 +1176,21 @@ extension ChecklistViewController {
         isRecording = false
         micButton.tintColor = ThemeManager.titleColor(for: traitCollection)
         title = checklist?.title ?? customChecklist?.title ?? "Checklist"
-        if let url = audioRecorder?.url {
-            let picker = UIDocumentPickerViewController(forExporting: [url])
-            present(picker, animated: true)
-        }
+        
+        // No need to dismiss alert since it auto-dismisses
+        showSaveLocationInfo()
     }
+    
+    private func showSaveLocationInfo() {
+        guard let url = audioRecorder?.url else { return }
+        
+        // Skip the alert entirely and go straight to sharing
+        let picker = UIDocumentPickerViewController(forExporting: [url])
+        picker.shouldShowFileExtensions = true
+        picker.delegate = self  // Add this to detect when user cancels
+        present(picker, animated: true)
+    }
+    
     
     // MARK: — Alerts
     
@@ -1046,36 +1200,36 @@ extension ChecklistViewController {
         present(ac, animated: true)
     }
     private func promptForVesselName(title: String,
-                                            message: String,
-                                            allowSkip: Bool = false,
-                                            completion: @escaping (String) -> Void) {
-                let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-                
-                alert.addTextField { textField in
-                    textField.placeholder = "Enter vessel name"
-                    textField.autocapitalizationType = .words
-                }
-                
-                if allowSkip {
-                    alert.addAction(UIAlertAction(title: "Not Now", style: .cancel) { _ in
-                        completion("Unknown Vessel")
-                    })
-                } else {
-                    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-                }
-                
-                alert.addAction(UIAlertAction(title: "Continue", style: .default) { _ in
-                    let vesselName = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespaces) ?? ""
-                    if vesselName.isEmpty {
-                        completion("Unknown Vessel")
-                    } else {
-                        completion(vesselName)
-                    }
-                })
-                
-                present(alert, animated: true)
+                                     message: String,
+                                     allowSkip: Bool = false,
+                                     completion: @escaping (String) -> Void) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        
+        alert.addTextField { textField in
+            textField.placeholder = "Enter vessel name"
+            textField.autocapitalizationType = .words
+        }
+        
+        if allowSkip {
+            alert.addAction(UIAlertAction(title: "Not Now", style: .cancel) { _ in
+                completion("Unknown Vessel")
+            })
+        } else {
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        }
+        
+        alert.addAction(UIAlertAction(title: "Continue", style: .default) { _ in
+            let vesselName = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespaces) ?? ""
+            if vesselName.isEmpty {
+                completion("Unknown Vessel")
+            } else {
+                completion(vesselName)
             }
-
+        })
+        
+        present(alert, animated: true)
+    }
+    
     // MARK: — UITextViewDelegate
     
     func textViewDidBeginEditing(_ textView: UITextView) {
@@ -1471,14 +1625,14 @@ extension ChecklistViewController {
             
             // Present share sheet
             let ac = UIActivityViewController(activityItems: [tmpURL], applicationActivities: nil)
-
+            
             // iPad-specific fix: Set popover source for iPad compatibility
             if let popover = ac.popoverPresentationController {
                 popover.sourceView = self.view
                 popover.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
                 popover.permittedArrowDirections = []
             }
-
+            
             present(ac, animated: true)
             
         } catch {
@@ -1842,7 +1996,7 @@ extension ChecklistViewController {
         
         present(alert, animated: true)
     }
-
+    
     private func promptForCaptainName() {
         let alert = UIAlertController(
             title: "Captain Information",
@@ -1865,7 +2019,7 @@ extension ChecklistViewController {
         
         present(alert, animated: true)
     }
-
+    
     private func collectPilotSignature() {
         let signatureVC = SignatureViewController()
         signatureVC.signatureFor = "Pilot"
@@ -1888,20 +2042,20 @@ extension ChecklistViewController {
         
         let nav = UINavigationController(rootViewController: signatureVC)
         nav.modalPresentationStyle = .overFullScreen
-
+        
         // iPad-specific fix: Set popover source for iPad compatibility
         if let popover = nav.popoverPresentationController {
             popover.sourceView = self.view
             popover.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
             popover.permittedArrowDirections = []
         }
-
+        
         // Apply your app's theme to make buttons visible!
         ThemeManager.apply(to: nav, traitCollection: nav.traitCollection)
-
+        
         present(nav, animated: true)
     }
-
+    
     private func collectCaptainSignature() {
         let signatureVC = SignatureViewController()
         signatureVC.signatureFor = "Captain"
@@ -1919,20 +2073,20 @@ extension ChecklistViewController {
         
         let nav = UINavigationController(rootViewController: signatureVC)
         nav.modalPresentationStyle = .overFullScreen
-
+        
         // iPad-specific fix: Set popover source for iPad compatibility
         if let popover = nav.popoverPresentationController {
             popover.sourceView = self.view
             popover.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
             popover.permittedArrowDirections = []
         }
-
+        
         // Apply your app's theme to make buttons visible!
         ThemeManager.apply(to: nav, traitCollection: nav.traitCollection)
-
+        
         present(nav, animated: true)
     }
-
+    
     private func drawSignatureSectionFixed(
         yStart: inout CGFloat,
         pageW: CGFloat,
@@ -2027,3 +2181,18 @@ extension ChecklistViewController {
         }
     }
 }
+        // MARK: - UIDocumentPickerDelegate
+extension ChecklistViewController {
+            func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+                // User successfully exported the file
+                showAlert(title: "Success", message: "Voice memo saved.")
+            }
+            
+            func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+                // User cancelled - the recording is lost since we can't access it in-app
+                showAlert(title: "Recording Not Saved", message: "The voice memo was not exported and cannot be recovered.")
+            }
+            
+        }
+    
+

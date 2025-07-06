@@ -46,6 +46,10 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
         else { return [] }
         return arr
     }()
+    
+    // Track if changes were made
+    private var hasUnsavedChanges = false
+    private var saveButton: UIBarButtonItem?
 
     // MARK: - Lifecycle
 
@@ -69,7 +73,10 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        persistSettings()
+        // Auto-save when leaving if there are changes
+        if hasUnsavedChanges {
+            persistSettings()
+        }
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -77,6 +84,7 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
         view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
         tableView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
         tableView.reloadData()
+        updateSaveButtonAppearance()
     }
 
     // MARK: - Persistence
@@ -87,17 +95,44 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
         if let data = try? JSONEncoder().encode(contacts) {
             UserDefaults.standard.setValue(data, forKey: "emergencyContacts")
         }
+        hasUnsavedChanges = false
+        updateSaveButtonState()
     }
 
     // MARK: - Setup
 
     private func setupNavigationBar() {
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            barButtonSystemItem: .save,
+        // Create save button with custom styling
+        saveButton = UIBarButtonItem(
+            title: "Save",
+            style: .done,
             target: self,
-            action: #selector(saveAndClose)
+            action: #selector(saveAndShowConfirmation)
         )
-        navigationItem.rightBarButtonItem?.tintColor = ThemeManager.titleColor(for: traitCollection)
+        
+        // Don't set tintColor - let it inherit the navigation bar's tint (white)
+        navigationItem.rightBarButtonItem = saveButton
+        updateSaveButtonState()
+    }
+    
+    private func updateSaveButtonState() {
+        saveButton?.isEnabled = hasUnsavedChanges
+        updateSaveButtonAppearance()
+    }
+    
+    private func updateSaveButtonAppearance() {
+        if hasUnsavedChanges {
+            // Make it prominent when there are changes - use white like other nav items
+            saveButton?.tintColor = navigationController?.navigationBar.tintColor ?? .white
+        } else {
+            // Dim it when no changes - use a semi-transparent white
+            saveButton?.tintColor = UIColor.white.withAlphaComponent(0.5)
+        }
+    }
+    
+    private func markAsChanged() {
+        hasUnsavedChanges = true
+        updateSaveButtonState()
     }
 
     private func setupTableView() {
@@ -161,6 +196,67 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
         persistSettings()
         navigationController?.popViewController(animated: true)
     }
+    
+    @objc private func saveAndShowConfirmation() {
+        persistSettings()
+        
+        // Show brief confirmation
+        let checkmark = UIImageView(image: UIImage(systemName: "checkmark.circle.fill"))
+        checkmark.tintColor = .systemGreen
+        checkmark.contentMode = .scaleAspectFit
+        
+        let label = UILabel()
+        label.text = "Saved"
+        label.textColor = .label
+        label.font = .systemFont(ofSize: 16, weight: .medium)
+        
+        let containerView = UIView()
+        containerView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+        containerView.layer.cornerRadius = 12
+        containerView.layer.shadowColor = UIColor.black.cgColor
+        containerView.layer.shadowOpacity = 0.2
+        containerView.layer.shadowOffset = CGSize(width: 0, height: 2)
+        containerView.layer.shadowRadius = 4
+        
+        containerView.addSubview(checkmark)
+        containerView.addSubview(label)
+        
+        checkmark.translatesAutoresizingMaskIntoConstraints = false
+        label.translatesAutoresizingMaskIntoConstraints = false
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        
+        view.addSubview(containerView)
+        
+        NSLayoutConstraint.activate([
+            checkmark.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            checkmark.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            checkmark.widthAnchor.constraint(equalToConstant: 24),
+            checkmark.heightAnchor.constraint(equalToConstant: 24),
+            
+            label.leadingAnchor.constraint(equalTo: checkmark.trailingAnchor, constant: 8),
+            label.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            label.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            
+            containerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            containerView.heightAnchor.constraint(equalToConstant: 50)
+        ])
+        
+        containerView.alpha = 0
+        containerView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+        
+        UIView.animate(withDuration: 0.3, animations: {
+            containerView.alpha = 1
+            containerView.transform = .identity
+        }) { _ in
+            UIView.animate(withDuration: 0.2, delay: 0.5, options: [], animations: {
+                containerView.alpha = 0
+                containerView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+            }) { _ in
+                containerView.removeFromSuperview()
+            }
+        }
+    }
 
     @objc private func editContact(_ sender: UIButton) {
         let index = sender.tag
@@ -178,7 +274,7 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
                 !name.isEmpty, !phone.isEmpty
             else { return }
             self.contacts[index] = EmergencyContact(name: name, phone: phone)
-            self.persistSettings()
+            self.markAsChanged()
             self.tableView.reloadSections(IndexSet(integer: 1), with: .automatic)
         })
         present(ac, animated: true)
@@ -186,10 +282,12 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
 
     @objc private func nameChanged(_ tf: UITextField) {
         pilotName = tf.text ?? ""
+        markAsChanged()
     }
+    
     @objc private func groupChanged(_ tf: UITextField) {
         pilotGroup = tf.text ?? ""
-
+        markAsChanged()
     }
 }
 
@@ -285,7 +383,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
                     !name.isEmpty, !phone.isEmpty
                 else { return }
                 self.contacts.append(EmergencyContact(name: name, phone: phone))
-                self.persistSettings()
+                self.markAsChanged()
                 tableView.reloadSections(IndexSet(integer: 1), with: .automatic)
             })
             present(ac, animated: true)
@@ -298,7 +396,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
     {
         if editingStyle == .delete && indexPath.section == 1 {
             contacts.remove(at: indexPath.row)
-            persistSettings()
+            markAsChanged()
             tableView.deleteRows(at: [indexPath], with: .automatic)
         }
     }

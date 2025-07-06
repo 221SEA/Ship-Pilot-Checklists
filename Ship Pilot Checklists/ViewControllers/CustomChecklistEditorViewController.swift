@@ -7,8 +7,14 @@ import UIKit
 
 class CustomChecklistEditorViewController: UIViewController, UITextFieldDelegate {
 
-    // The checklist we’re editing (injected before push)
+    // The checklist we're editing (injected before push)
     var checklist: CustomChecklist!
+    
+    // Track if we have unsaved changes
+    private var hasUnsavedChanges = false
+    
+    // Track the currently editing cell
+    private weak var currentlyEditingCell: EditableChecklistCell?
 
     // MARK: – UI Elements
 
@@ -40,7 +46,7 @@ class CustomChecklistEditorViewController: UIViewController, UITextFieldDelegate
         setupFavoriteButton()
         setupTableView()
 
-        // 6) “Save” button on top right
+        // 6) "Save" button on top right
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             title: "Save",
             style: .done,
@@ -48,18 +54,45 @@ class CustomChecklistEditorViewController: UIViewController, UITextFieldDelegate
             action: #selector(saveChecklist)
         )
 
-        // ── NEW: wire up the text field delegate so Return can dismiss keyboard ──
+        // Wire up the text field delegate
         titleField.delegate = self
 
-        // ── NEW: tap anywhere to dismiss keyboard ──
+        // Tap anywhere to dismiss keyboard
         let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         tap.cancelsTouchesInView = false
         view.addGestureRecognizer(tap)
+        
+        // Add keyboard observers
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillShow(_:)),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillHide(_:)),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.navigationBar.layoutIfNeeded()
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        // Check for unsaved changes
+        if hasUnsavedChanges {
+            showUnsavedChangesAlert()
+        }
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -72,10 +105,37 @@ class CustomChecklistEditorViewController: UIViewController, UITextFieldDelegate
         tableView.reloadData()
     }
 
-    // MARK: – Keyboard Dismissal Helpers
+    // MARK: – Keyboard Handling
 
     @objc private func dismissKeyboard() {
         view.endEditing(true)
+    }
+    
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+        
+        let keyboardHeight = keyboardFrame.height
+        let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+        
+        UIView.animate(withDuration: duration) {
+            self.tableView.contentInset.bottom = keyboardHeight
+            self.tableView.scrollIndicatorInsets.bottom = keyboardHeight
+            
+            // Scroll to show the editing cell if needed
+            if let cell = self.currentlyEditingCell,
+               let indexPath = self.tableView.indexPath(for: cell) {
+                self.tableView.scrollToRow(at: indexPath, at: .none, animated: true)
+            }
+        }
+    }
+    
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+        
+        UIView.animate(withDuration: duration) {
+            self.tableView.contentInset.bottom = 0
+            self.tableView.scrollIndicatorInsets.bottom = 0
+        }
     }
 
     // MARK: – UITextFieldDelegate
@@ -83,6 +143,11 @@ class CustomChecklistEditorViewController: UIViewController, UITextFieldDelegate
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
         return true
+    }
+    
+    func textFieldDidBeginEditing(_ textField: UITextField) {
+        // Prevent the space bar issue on iPad by ensuring proper focus
+        textField.becomeFirstResponder()
     }
 
     // MARK: – Setup Title Text Field
@@ -94,6 +159,9 @@ class CustomChecklistEditorViewController: UIViewController, UITextFieldDelegate
         titleField.text = checklist.title
         titleField.font = .systemFont(ofSize: 24, weight: .bold)
         titleField.addTarget(self, action: #selector(titleDidChange(_:)), for: .editingChanged)
+        titleField.autocorrectionType = .default
+        titleField.autocapitalizationType = .sentences
+        titleField.returnKeyType = .done
 
         view.addSubview(titleField)
 
@@ -112,6 +180,7 @@ class CustomChecklistEditorViewController: UIViewController, UITextFieldDelegate
         navigationItem.title = checklist.title.isEmpty
             ? "Untitled Checklist"
             : checklist.title
+        hasUnsavedChanges = true
     }
 
     // MARK: – Favorite (Star) Button
@@ -135,6 +204,7 @@ class CustomChecklistEditorViewController: UIViewController, UITextFieldDelegate
     @objc private func toggleFavorite() {
         checklist.isFavorite.toggle()
         updateFavoriteIcon()
+        hasUnsavedChanges = true
     }
 
     private func updateFavoriteIcon() {
@@ -152,6 +222,7 @@ class CustomChecklistEditorViewController: UIViewController, UITextFieldDelegate
         tableView.dragDelegate = self
         tableView.dropDelegate = self
         tableView.dragInteractionEnabled = true
+        tableView.keyboardDismissMode = .interactive
 
         tableView.register(
             EditableChecklistCell.self,
@@ -182,6 +253,7 @@ class CustomChecklistEditorViewController: UIViewController, UITextFieldDelegate
         // 2) Persist updated title & items
         checklist.title = trimmedTitle
         CustomChecklistManager.shared.update(checklist)
+        hasUnsavedChanges = false
 
         // 3) Pop back to the list (if present)
         if let nav = navigationController {
@@ -200,6 +272,29 @@ class CustomChecklistEditorViewController: UIViewController, UITextFieldDelegate
             // If this were presented modally, just dismiss
             dismiss(animated: true, completion: nil)
         }
+    }
+    
+    // MARK: - Unsaved Changes Alert
+    
+    private func showUnsavedChangesAlert() {
+        let alert = UIAlertController(
+            title: "Unsaved Changes",
+            message: "You have unsaved changes. Do you want to save before leaving?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in
+            self.saveChecklist()
+        })
+        
+        alert.addAction(UIAlertAction(title: "Discard", style: .destructive) { _ in
+            self.hasUnsavedChanges = false
+            self.navigationController?.popViewController(animated: true)
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        present(alert, animated: true)
     }
 
     // MARK: – Helper Alert
@@ -230,7 +325,7 @@ extension CustomChecklistEditorViewController: UITableViewDataSource, UITableVie
 
     func tableView(_ tableView: UITableView,
                    numberOfRowsInSection section: Int) -> Int {
-        // +1 for the “+” row that adds a new item to this section
+        // +1 for the "+" row that adds a new item to this section
         return checklist.sections[section].items.count + 1
     }
 
@@ -238,7 +333,7 @@ extension CustomChecklistEditorViewController: UITableViewDataSource, UITableVie
                    cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let isAddRow = indexPath.row == checklist.sections[indexPath.section].items.count
 
-        // The “+” row (to append a new ChecklistItem)
+        // The "+" row (to append a new ChecklistItem)
         if isAddRow {
             let cell = UITableViewCell(style: .default, reuseIdentifier: nil)
             cell.textLabel?.text = "+"
@@ -258,8 +353,51 @@ extension CustomChecklistEditorViewController: UITableViewDataSource, UITableVie
         cell.configure(with: item)
         cell.showsReorderControl = false
 
+        // When cell begins editing, track it
+        cell.editingBegan = { [weak self] in
+            self?.currentlyEditingCell = cell
+        }
+        
+        // When user presses return, handle it
+        cell.returnPressed = { [weak self] in
+            guard let self = self else { return }
+            
+            // Find the current index path
+            guard let currentIndexPath = self.tableView.indexPath(for: cell) else { return }
+            
+            // If this is the last item in the section, add a new one
+            let section = currentIndexPath.section
+            let isLastItem = currentIndexPath.row == self.checklist.sections[section].items.count - 1
+            
+            if isLastItem {
+                // Add new item
+                self.checklist.sections[section].items.append(
+                    ChecklistItem(title: "", isChecked: false, timestamp: nil, quickNote: nil)
+                )
+                
+                // Insert new row
+                let newIndex = IndexPath(row: currentIndexPath.row + 1, section: section)
+                self.tableView.insertRows(at: [newIndex], with: .automatic)
+                
+                // Focus on the new cell after a slight delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    if let newCell = self.tableView.cellForRow(at: newIndex) as? EditableChecklistCell {
+                        newCell.beginEditing()
+                    }
+                }
+            } else {
+                // Just move to the next item
+                let nextIndex = IndexPath(row: currentIndexPath.row + 1, section: section)
+                if let nextCell = self.tableView.cellForRow(at: nextIndex) as? EditableChecklistCell {
+                    nextCell.beginEditing()
+                } else {
+                    // Dismiss keyboard if no next cell
+                    cell.endEditing()
+                }
+            }
+        }
+
         // If user edits text, update our in-memory model
-        // REPLACE WITH THIS:
         cell.textChanged = { [weak self] newText in
             guard let self = self,
                   let currentIndexPath = self.tableView.indexPath(for: cell),
@@ -268,6 +406,7 @@ extension CustomChecklistEditorViewController: UITableViewDataSource, UITableVie
                 return
             }
             self.checklist.sections[currentIndexPath.section].items[currentIndexPath.row].title = newText
+            self.hasUnsavedChanges = true
         }
 
         // If user taps delete, remove that item
@@ -275,6 +414,7 @@ extension CustomChecklistEditorViewController: UITableViewDataSource, UITableVie
             guard let self = self else { return }
             self.checklist.sections[indexPath.section]
                 .items.remove(at: indexPath.row)
+            self.hasUnsavedChanges = true
             tableView.deleteRows(at: [indexPath], with: .automatic)
         }
 
@@ -294,12 +434,20 @@ extension CustomChecklistEditorViewController: UITableViewDataSource, UITableVie
             // 2) Insert new row at the end of this section
             let newIndex = IndexPath(row: checklist.sections[section].items.count - 1, section: section)
             tableView.insertRows(at: [newIndex], with: .automatic)
+            hasUnsavedChanges = true
+            
+            // 3) Auto-focus on the new cell
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                if let newCell = tableView.cellForRow(at: newIndex) as? EditableChecklistCell {
+                    newCell.beginEditing()
+                }
+            }
         }
     }
 
     func tableView(_ tableView: UITableView,
                    canMoveRowAt indexPath: IndexPath) -> Bool {
-        // Only existing items (not the “+” row) can be reordered
+        // Only existing items (not the "+" row) can be reordered
         return indexPath.row < checklist.sections[indexPath.section].items.count
     }
 
@@ -349,6 +497,7 @@ extension CustomChecklistEditorViewController: UITableViewDragDelegate, UITableV
                 tableView.deleteRows(at: [srcIndexPath], with: .automatic)
                 tableView.insertRows(at: [destIndexPath], with: .automatic)
             }
+            hasUnsavedChanges = true
         }
     }
 
@@ -361,4 +510,3 @@ extension CustomChecklistEditorViewController: UITableViewDragDelegate, UITableV
         )
     }
 }
-

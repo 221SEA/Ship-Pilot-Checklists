@@ -6,8 +6,8 @@
 import UIKit
 import Foundation   // so we pick up the global ChecklistItem
 
-/// A single row in “Custom Checklist Editor” where you can drag/reorder and edit text.
-class EditableChecklistCell: UITableViewCell {
+/// A single row in "Custom Checklist Editor" where you can drag/reorder and edit text.
+class EditableChecklistCell: UITableViewCell, UITextFieldDelegate {
 
     let dragHandle = UIImageView()
     let textField = UITextField()
@@ -15,6 +15,8 @@ class EditableChecklistCell: UITableViewCell {
 
     var textChanged: ((String) -> Void)?
     var deleteTapped: (() -> Void)?
+    var returnPressed: (() -> Void)?
+    var editingBegan: (() -> Void)?
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -40,6 +42,10 @@ class EditableChecklistCell: UITableViewCell {
         textField.borderStyle = .roundedRect
         textField.placeholder = "Checklist item"
         textField.addTarget(self, action: #selector(textFieldChanged), for: .editingChanged)
+        textField.delegate = self
+        textField.returnKeyType = .done
+        textField.autocorrectionType = .default
+        textField.autocapitalizationType = .sentences
 
         // 3) Delete button on right
         deleteButton.translatesAutoresizingMaskIntoConstraints = false
@@ -89,5 +95,30 @@ class EditableChecklistCell: UITableViewCell {
 
     @objc private func deleteButtonTapped() {
         deleteTapped?()
+    }
+    
+    // MARK: - New Methods for Better UX
+    
+    func beginEditing() {
+        textField.becomeFirstResponder()
+    }
+    
+    func endEditing() {
+        textField.resignFirstResponder()
+    }
+    
+    // MARK: - UITextFieldDelegate
+    
+    func textFieldDidBeginEditing(_ textField: UITextField) {
+        editingBegan?()
+        // Ensure the text field is properly focused (helps with iPad space bar issue)
+        DispatchQueue.main.async {
+            textField.becomeFirstResponder()
+        }
+    }
+    
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        returnPressed?()
+        return true
     }
 }
