@@ -381,7 +381,7 @@ extension ContactEditorViewController: UITableViewDataSource {
             emailField = textField
             
         case (2, 0): // VHF Channel
-            textField.placeholder = "VHF Channel (e.g., Ch. 16/68)"
+            textField.placeholder = "VHF Channel (e.g., Ch. 16/12)"
             textField.text = contact?.vhfChannel
             vhfChannelField = textField
             

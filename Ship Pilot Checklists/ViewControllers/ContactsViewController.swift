@@ -103,6 +103,22 @@ class ContactsViewController: UIViewController {
         searchController.searchBar.placeholder = "Search contacts..."
         navigationItem.searchController = searchController
         definesPresentationContext = true
+        
+        // ADD THIS to fix search bar text colors:
+        // Search field text
+        searchController.searchBar.searchTextField.textColor = .label
+        
+        // For the search bar itself in the navigation bar
+        if let textField = searchController.searchBar.value(forKey: "searchField") as? UITextField {
+            textField.textColor = .label
+            textField.tintColor = ThemeManager.themeColor
+            
+            // Placeholder text
+            textField.attributedPlaceholder = NSAttributedString(
+                string: "Search contacts...",
+                attributes: [.foregroundColor: UIColor.secondaryLabel]
+            )
+        }
     }
     
     private func setupTableView() {
@@ -171,8 +187,16 @@ class ContactsViewController: UIViewController {
         // Update search bar appearance
         if traitCollection.userInterfaceStyle == .dark {
             searchController.searchBar.barStyle = .black
+            searchController.searchBar.tintColor = .white  // Cancel button
         } else {
             searchController.searchBar.barStyle = .default
+            searchController.searchBar.tintColor = .white  // Cancel button
+        }
+        
+        // Update search field colors
+        if let textField = searchController.searchBar.value(forKey: "searchField") as? UITextField {
+            textField.textColor = .label
+            textField.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.9)
         }
     }
     
@@ -264,7 +288,7 @@ class ContactsViewController: UIViewController {
             self?.textContact(contact)
         })
         
-        actionSheet.addAction(UIAlertAction(title: "Edit", style: .default) { [weak self] _ in
+        actionSheet.addAction(UIAlertAction(title: "View / Edit", style: .default) { [weak self] _ in
             let editor = ContactEditorViewController(mode: .edit(contact: contact, indexPath: indexPath))
             editor.delegate = self
             let nav = UINavigationController(rootViewController: editor)
