@@ -245,13 +245,6 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
         UserDefaults.standard.string(forKey: "pilotName") ?? ""
     }
 
-    private func loadContacts() -> [EmergencyContact] {
-        guard let data = UserDefaults.standard.data(forKey: "emergencyContacts"),
-              let contacts = try? JSONDecoder().decode([EmergencyContact].self, from: data)
-        else { return [] }
-        return contacts
-    }
-
     /// A unique UserDefaults key for this checklist’s Notes
     private var notesKey: String {
         if let c = customChecklist {
@@ -565,13 +558,18 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
     @objc private func emergencyTapped() {
         if pilotName.trimmingCharacters(in: .whitespaces).isEmpty {
             showAlert(title: "Name Missing",
-                      message: "Please enter your name in Settings before sending an emergency text.")
+                      message: "Please enter your name in Profile before sending an emergency text.")
             return
         }
-        let allContacts = loadContacts()
-        guard !allContacts.isEmpty else {
+        
+        // Check if there are emergency contacts in the new system
+        let categories = ContactsManager.shared.loadCategories()
+        let emergencyCategory = categories.first(where: { $0.name == "Emergency" })
+        let emergencyContacts = emergencyCategory?.contacts ?? []
+        
+        guard !emergencyContacts.isEmpty else {
             showAlert(title: "No Emergency Contacts",
-                      message: "Please add contacts in Settings first.")
+                      message: "Please add emergency contacts in Contacts > Emergency category first.")
             return
         }
         
@@ -613,9 +611,24 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
         }
     }
     private func proceedWithEmergencyContacts() {
-        let allContacts = loadContacts()
+        // Load emergency contacts from the new Contacts system
+        let categories = ContactsManager.shared.loadCategories()
+        let emergencyCategory = categories.first(where: { $0.name == "Emergency" })
+        let operationalContacts = emergencyCategory?.contacts ?? []
+        
+        // Convert to EmergencyContact format for backward compatibility
+        let emergencyContacts = operationalContacts.map {
+            EmergencyContact(name: $0.name, phone: $0.phone)
+        }
+        
+        guard !emergencyContacts.isEmpty else {
+            showAlert(title: "No Emergency Contacts",
+                      message: "Please add emergency contacts in Contacts > Emergency category first.")
+            return
+        }
+        
         let picker = ContactSelectionViewController(style: .insetGrouped)
-        picker.contacts = allContacts
+        picker.emergencyContacts = emergencyContacts  // Use the correct property name
         picker.delegate = self
         let nav = UINavigationController(rootViewController: picker)
         nav.modalPresentationStyle = .formSheet
@@ -626,14 +639,25 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
     // MARK: — ContactSelectionDelegate
 
     func contactSelection(_ controller: ContactSelectionViewController,
-                          didSelect contacts: [EmergencyContact]) {
+                          didSelect emergencyContacts: [EmergencyContact],
+                          operationalContacts: [OperationalContact]) {
         controller.dismiss(animated: true)
-        guard !contacts.isEmpty else { return }
+        
+        // Combine both types of contacts
+        var allContacts = emergencyContacts
+        
+        // Convert operational contacts to emergency contacts for compatibility
+        let convertedOperational = operationalContacts.map {
+            EmergencyContact(name: $0.name, phone: $0.phone)
+        }
+        allContacts.append(contentsOf: convertedOperational)
+        
+        guard !allContacts.isEmpty else { return }
         
         // First prompt for vessel name
         promptForVesselName(
             title: "Emergency SMS",
-            message: "What vessel are you on?",
+            message: "Name of Vessel?",
             allowSkip: true
         ) { vesselName in
             // Then prompt for situation
@@ -644,7 +668,7 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
             alert.addAction(UIAlertAction(title: "Send", style: .default) { _ in
                 let typed = alert.textFields?.first?.text ?? ""
-                self.sendEmergencyText(to: contacts, withSituation: typed, vesselName: vesselName)
+                self.sendEmergencyText(to: allContacts, withSituation: typed, vesselName: vesselName)
             })
             self.present(alert, animated: true)
         }

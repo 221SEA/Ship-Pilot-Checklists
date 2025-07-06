@@ -2,14 +2,10 @@
 //  SettingsViewController.swift
 //  Ship Pilot Checklists
 //
+//  Simplified version - Profile information only
+//
 
 import UIKit
-
-/// Data model for saving pilot info and emergency contacts
-struct EmergencyContact: Codable {
-    var name: String
-    var phone: String
-}
 
 class SettingsViewController: UIViewController {
 
@@ -22,53 +18,40 @@ class SettingsViewController: UIViewController {
         label.font = .systemFont(ofSize: 20)
         label.textColor = .secondaryLabel
         label.text = """
-In this menu, you can set up fields to be pre-filled for your Emergency SMS and your Post-Incident PDF generation. The PDF will include your profile info and all of the details, photos and notes from your Checklist. See Help for more details. 
+Set up your profile information here. This will be used in:
 
-In an emergency, tapping the text button at the bottom of a Checklist will send a pre-filled text message containing:
-• Your Name
-• Vessel Name (prompted, no need to prefill)
-• The name of the open Checklist
-• Your current GPS fix (from Notes field)
-• A short note field you can optionally fill out before hitting send
-• Local tide & local wind information (from Notes field, requires internet connection)
+• Emergency SMS messages - Your name will be included
+• PDF generation - Your name and pilot group will appear in the header
+• Post-incident reports - All profile information will be included
 
-Configure up to four contacts below who will receive the Emergency SMS simultaneously.
+Make sure to save your changes before leaving this screen.
 """
         return label
     }()
 
     // MARK: - Data
-    private var pilotName: String   = UserDefaults.standard.string(forKey: "pilotName")   ?? ""
-    private var pilotGroup: String  = UserDefaults.standard.string(forKey: "pilotGroup")  ?? ""
-    private var contacts: [EmergencyContact] = {
-        guard let data = UserDefaults.standard.data(forKey: "emergencyContacts"),
-              let arr = try? JSONDecoder().decode([EmergencyContact].self, from: data)
-        else { return [] }
-        return arr
-    }()
+    private var pilotName: String = UserDefaults.standard.string(forKey: "pilotName") ?? ""
+    private var pilotGroup: String = UserDefaults.standard.string(forKey: "pilotGroup") ?? ""
     
     // Track if changes were made
     private var hasUnsavedChanges = false
     private var saveButton: UIBarButtonItem?
+    private var keyboardHeight: CGFloat = 0
 
     // MARK: - Lifecycle
-
     override func viewDidLoad() {
         super.viewDidLoad()
 
         edgesForExtendedLayout = [.all]
         extendedLayoutIncludesOpaqueBars = true
+        overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
 
         title = "Profile"
         view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
 
         setupNavigationBar()
         setupTableView()
-        installKeyboardObservers()
-    }
-
-    deinit {
-        NotificationCenter.default.removeObserver(self)
+        setupKeyboardObservers()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -88,19 +71,49 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
     }
 
     // MARK: - Persistence
-
     private func persistSettings() {
-        UserDefaults.standard.setValue(pilotName,  forKey: "pilotName")
+        UserDefaults.standard.setValue(pilotName, forKey: "pilotName")
         UserDefaults.standard.setValue(pilotGroup, forKey: "pilotGroup")
-        if let data = try? JSONEncoder().encode(contacts) {
-            UserDefaults.standard.setValue(data, forKey: "emergencyContacts")
-        }
         hasUnsavedChanges = false
         updateSaveButtonState()
     }
 
-    // MARK: - Setup
+    // MARK: - Keyboard Handling
+    private func setupKeyboardObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillShow(_:)),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillHide(_:)),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
+    }
 
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+        
+        let keyboardHeight = keyboardFrame.height
+        let contentInsets = UIEdgeInsets(top: 0, left: 0, bottom: keyboardHeight, right: 0)
+        
+        tableView.contentInset = contentInsets
+        tableView.scrollIndicatorInsets = contentInsets
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        tableView.contentInset = .zero
+        tableView.scrollIndicatorInsets = .zero
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    // MARK: - Setup
     private func setupNavigationBar() {
         // Create save button with custom styling
         saveButton = UIBarButtonItem(
@@ -110,7 +123,6 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
             action: #selector(saveAndShowConfirmation)
         )
         
-        // Don't set tintColor - let it inherit the navigation bar's tint (white)
         navigationItem.rightBarButtonItem = saveButton
         updateSaveButtonState()
     }
@@ -122,10 +134,10 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
     
     private func updateSaveButtonAppearance() {
         if hasUnsavedChanges {
-            // Make it prominent when there are changes - use white like other nav items
+            // Make it prominent when there are changes
             saveButton?.tintColor = navigationController?.navigationBar.tintColor ?? .white
         } else {
-            // Dim it when no changes - use a semi-transparent white
+            // Dim it when no changes
             saveButton?.tintColor = UIColor.white.withAlphaComponent(0.5)
         }
     }
@@ -138,7 +150,7 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
     private func setupTableView() {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.dataSource = self
-        tableView.delegate   = self
+        tableView.delegate = self
         tableView.keyboardDismissMode = .onDrag
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 44
@@ -165,38 +177,7 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
         ])
     }
 
-    private func installKeyboardObservers() {
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(keyboardWillShow(_:)),
-                                               name: UIResponder.keyboardWillShowNotification,
-                                               object: nil)
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(keyboardWillHide(_:)),
-                                               name: UIResponder.keyboardWillHideNotification,
-                                               object: nil)
-    }
-
-    @objc private func keyboardWillShow(_ notification: Notification) {
-        guard let info = notification.userInfo,
-              let kbFrame = info[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
-        else { return }
-        let inset = kbFrame.height
-        tableView.contentInset.bottom = inset
-        tableView.scrollIndicatorInsets.bottom = inset
-    }
-
-    @objc private func keyboardWillHide(_ notification: Notification) {
-        tableView.contentInset.bottom = 0
-        tableView.scrollIndicatorInsets.bottom = 0
-    }
-
     // MARK: - Actions
-
-    @objc private func saveAndClose() {
-        persistSettings()
-        navigationController?.popViewController(animated: true)
-    }
-    
     @objc private func saveAndShowConfirmation() {
         persistSettings()
         
@@ -258,28 +239,6 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
         }
     }
 
-    @objc private func editContact(_ sender: UIButton) {
-        let index = sender.tag
-        let contact = contacts[index]
-        let ac = UIAlertController(title: "Edit Contact",
-                                   message: "Update name or phone number",
-                                   preferredStyle: .alert)
-        ac.addTextField { $0.text = contact.name }
-        ac.addTextField { $0.text = contact.phone }
-        ac.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        ac.addAction(UIAlertAction(title: "Save", style: .default) { _ in
-            guard
-                let name = ac.textFields?[0].text?.trimmingCharacters(in: .whitespaces),
-                let phone = ac.textFields?[1].text?.trimmingCharacters(in: .whitespaces),
-                !name.isEmpty, !phone.isEmpty
-            else { return }
-            self.contacts[index] = EmergencyContact(name: name, phone: phone)
-            self.markAsChanged()
-            self.tableView.reloadSections(IndexSet(integer: 1), with: .automatic)
-        })
-        present(ac, animated: true)
-    }
-
     @objc private func nameChanged(_ tf: UITextField) {
         pilotName = tf.text ?? ""
         markAsChanged()
@@ -292,21 +251,34 @@ Configure up to four contacts below who will receive the Emergency SMS simultane
 }
 
 // MARK: - UITableViewDataSource & Delegate
-
 extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
-    func numberOfSections(in tableView: UITableView) -> Int { 2 }
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return 2 // Profile section and Emergency Contacts section
+    }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if section == 0 {
+        switch section {
+        case 0: // Profile
             return 2
-        } else {
-            return contacts.count < 4 ? contacts.count + 1 : contacts.count
+        case 1: // Emergency Contacts info
+            return 1
+        default:
+            return 0
+        }
+    }
+    
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        switch section {
+        case 0:
+            return "Profile Information"
+        case 1:
+            return "Emergency Contacts"
+        default:
+            return nil
         }
     }
 
-    func tableView(_ tableView: UITableView,
-                   cellForRowAt indexPath: IndexPath) -> UITableViewCell
-    {
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
         cell.textLabel?.numberOfLines = 0
         cell.textLabel?.lineBreakMode = .byWordWrapping
@@ -315,7 +287,7 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
         cell.accessoryView = nil
 
         if indexPath.section == 0 {
-            // build a text field and use it as the accessoryView so it never overlaps the label
+            // Profile fields
             let width = view.bounds.width * 0.6
             let tf = UITextField(frame: CGRect(x: 0, y: 0, width: width, height: 30))
             tf.borderStyle = .roundedRect
@@ -324,80 +296,45 @@ extension SettingsViewController: UITableViewDataSource, UITableViewDelegate {
 
             switch indexPath.row {
             case 0:
-                cell.textLabel?.text       = "Pilot Name"
-                tf.placeholder             = "Enter your name"
-                tf.text                    = pilotName
-                tf.addTarget(self,
-                             action: #selector(nameChanged(_:)),
-                             for: .editingChanged)
+                cell.textLabel?.text = "Pilot Name"
+                tf.placeholder = "Enter your name"
+                tf.text = pilotName
+                tf.addTarget(self, action: #selector(nameChanged(_:)), for: .editingChanged)
             case 1:
-                cell.textLabel?.text       = "Pilot Group"
-                tf.placeholder             = "Enter your group"
-                tf.text                    = pilotGroup
-                tf.addTarget(self,
-                             action: #selector(groupChanged(_:)),
-                             for: .editingChanged)
-
+                cell.textLabel?.text = "Pilot Group"
+                tf.placeholder = "Enter your group"
+                tf.text = pilotGroup
+                tf.addTarget(self, action: #selector(groupChanged(_:)), for: .editingChanged)
             default:
                 break
             }
 
             cell.accessoryView = tf
-
-        } else {
-            if indexPath.row < contacts.count {
-                let contact = contacts[indexPath.row]
-                cell.textLabel?.text = "\(contact.name) – \(contact.phone)"
-                let pencil = UIButton(type: .system)
-                let cfg = UIImage.SymbolConfiguration(pointSize: 18, weight: .regular)
-                pencil.setImage(UIImage(systemName: "pencil", withConfiguration: cfg), for: .normal)
-                pencil.tintColor = ThemeManager.themeColor
-                pencil.sizeToFit()
-                pencil.tag = indexPath.row
-                pencil.addTarget(self, action: #selector(editContact(_:)), for: .touchUpInside)
-                cell.accessoryView = pencil
-            } else {
-                cell.textLabel?.text = "Add Contact"
-            }
+        } else if indexPath.section == 1 {
+            // Emergency contacts info
+            cell.textLabel?.text = "Manage Emergency Contacts"
+            cell.accessoryType = .disclosureIndicator
+            cell.selectionStyle = .default
         }
 
         return cell
     }
 
-    func tableView(_ tableView: UITableView,
-                   didSelectRowAt indexPath: IndexPath)
-    {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        guard indexPath.section == 1 else { return }
-        if indexPath.row == contacts.count && contacts.count < 4 {
-            let ac = UIAlertController(title: "New Contact",
-                                       message: "Enter name and phone number",
-                                       preferredStyle: .alert)
-            ac.addTextField { $0.placeholder = "Name" }
-            ac.addTextField { $0.placeholder = "Phone (e.g. +1234567890)" }
-            ac.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-            ac.addAction(UIAlertAction(title: "Add", style: .default) { _ in
-                guard
-                    let name = ac.textFields?[0].text?.trimmingCharacters(in: .whitespaces),
-                    let phone = ac.textFields?[1].text?.trimmingCharacters(in: .whitespaces),
-                    !name.isEmpty, !phone.isEmpty
-                else { return }
-                self.contacts.append(EmergencyContact(name: name, phone: phone))
-                self.markAsChanged()
-                tableView.reloadSections(IndexSet(integer: 1), with: .automatic)
-            })
-            present(ac, animated: true)
+        
+        if indexPath.section == 1 {
+            // Navigate to Contacts with Emergency category pre-selected
+            let contactsVC = ContactsViewController()
+            contactsVC.openToEmergencyCategory = true
+            navigationController?.pushViewController(contactsVC, animated: true)
         }
     }
-
-    func tableView(_ tableView: UITableView,
-                   commit editingStyle: UITableViewCell.EditingStyle,
-                   forRowAt indexPath: IndexPath)
-    {
-        if editingStyle == .delete && indexPath.section == 1 {
-            contacts.remove(at: indexPath.row)
-            markAsChanged()
-            tableView.deleteRows(at: [indexPath], with: .automatic)
+    
+    func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
+        if section == 1 {
+            return "Add emergency contacts in the Contacts section. They will appear as options when sending emergency SMS messages."
         }
+        return nil
     }
 }

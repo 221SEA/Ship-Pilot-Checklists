@@ -30,7 +30,8 @@ class MainViewController: UIViewController {
         let stackView = UIStackView(arrangedSubviews: [
             makeNavButton(title: "Included Checklists", icon: "list.clipboard"),
             makeNavButton(title: "Custom Checklists", icon: "pencil.and.list.clipboard"),
-            makeNavButton(title: "Favorites", icon: "star")
+            makeNavButton(title: "Favorites", icon: "star"),
+            makeNavButton(title: "Contacts", icon: "person.2")  // NEW
         ])
         stackView.axis = .vertical
         stackView.spacing = 20
@@ -129,6 +130,8 @@ class MainViewController: UIViewController {
             button.addTarget(self, action: #selector(openCustomChecklists), for: .touchUpInside)
         case "Favorites":
             button.addTarget(self, action: #selector(openFavorites), for: .touchUpInside)
+        case "Contacts":  // NEW
+            button.addTarget(self, action: #selector(openContacts), for: .touchUpInside)  // NEW
         default: break
         }
         return button
@@ -214,6 +217,11 @@ class MainViewController: UIViewController {
 
     @objc private func openFavorites() {
         let vc = FavoritesViewController()
+        applyUserInterfaceStyle(to: vc)
+        navigationController?.pushViewController(vc, animated: true)
+    }
+    @objc private func openContacts() {
+        let vc = ContactsViewController()
         applyUserInterfaceStyle(to: vc)
         navigationController?.pushViewController(vc, animated: true)
     }
