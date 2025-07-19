@@ -53,14 +53,56 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         guard let url = URLContexts.first?.url else { return }
-        
-        // Check if this is a .shipchecklist file
-        guard url.pathExtension.lowercased() == "shipchecklist" else { return }
-        
-        // Import the checklist
-        importChecklist(from: url)
+
+        switch url.pathExtension.lowercased() {
+        case "shipchecklist":
+            importChecklist(from: url)
+        case "csv":
+            importChecklistFromCSV(url: url)
+        case "shipcontacts":
+            importContacts(from: url)
+        default:
+            break
+        }
     }
-    
+    private func importContacts(from url: URL) {
+        do {
+            let data = try Data(contentsOf: url)
+            let decoder = JSONDecoder()
+            let importedCategories = try decoder.decode([ContactCategory].self, from: data)
+
+            let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
+            let prefixedCategories = importedCategories.map { original in
+                var copy = original
+                copy.name = "Imported – \(original.name) (\(timestamp))"
+                return copy
+            }
+
+            let allCategories = ContactsManager.shared.loadCategories() + prefixedCategories
+            ContactsManager.shared.saveCategories(allCategories)
+
+            DispatchQueue.main.async {
+                let alert = UIAlertController(
+                    title: "Contacts Imported",
+                    message: "Contact list successfully imported.",
+                    preferredStyle: .alert
+                )
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true)
+            }
+
+        } catch {
+            DispatchQueue.main.async {
+                let alert = UIAlertController(
+                    title: "Import Failed",
+                    message: "Unable to read contact data: \(error.localizedDescription)",
+                    preferredStyle: .alert
+                )
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true)
+            }
+        }
+    }
     private func importChecklist(from url: URL) {
         do {
             // Read the file data
@@ -78,6 +120,64 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 self.showImportConfirmation(for: importedChecklist)
             }
             
+        } catch {
+            DispatchQueue.main.async {
+                self.showImportError(error: error)
+            }
+        }
+    }
+    func importChecklistFromCSV(url: URL) {
+        do {
+            let content = try String(contentsOf: url)
+            var rows = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+
+            // ✅ Step 1: Validate header
+            guard let header = rows.first else {
+                throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "CSV is empty."])
+            }
+
+            let expectedHeader = ["Priority", "Item"]
+            let parsedHeader = header.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+            guard Array(parsedHeader.prefix(expectedHeader.count)) == expectedHeader else {
+                throw NSError(domain: "", code: 0, userInfo: [
+                    NSLocalizedDescriptionKey: "Invalid CSV header. Expected: \"Priority,Item\""
+                ])
+            }
+
+            // ✅ Step 2: Parse rows and group by section
+            rows.removeFirst() // Remove header
+            var groupedItems: [String: [ChecklistItem]] = [:]
+
+            for row in rows {
+                let columns = row.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                guard columns.count >= 2 else { continue }
+
+                let priority = columns[0]
+                let itemTitle = columns[1]
+
+                let item = ChecklistItem(
+                    title: itemTitle,
+                    isChecked: false
+                )
+
+                groupedItems[priority, default: []].append(item)
+            }
+
+            // ✅ Step 3: Convert grouped items into sections
+            let sections = groupedItems.map { (sectionTitle, items) in
+                ChecklistSection(title: sectionTitle, items: items)
+            }.sorted(by: { $0.title < $1.title }) // Optional: sort sections alphabetically
+
+            let checklist = CustomChecklist(
+                title: url.deletingPathExtension().lastPathComponent,
+                sections: sections
+            )
+
+            DispatchQueue.main.async {
+                self.showImportConfirmation(for: checklist)
+            }
+
         } catch {
             DispatchQueue.main.async {
                 self.showImportError(error: error)

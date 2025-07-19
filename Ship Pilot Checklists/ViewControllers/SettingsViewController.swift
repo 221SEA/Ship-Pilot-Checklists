@@ -37,6 +37,9 @@ Make sure to save your changes before leaving this screen.
     private var hasUnsavedChanges = false
     private var saveButton: UIBarButtonItem?
     private var keyboardHeight: CGFloat = 0
+    
+    // Track if we came from PDF generation
+    var cameFromPDFGeneration = false
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -178,10 +181,18 @@ Make sure to save your changes before leaving this screen.
     }
 
     // MARK: - Actions
+    // In SettingsViewController.swift, replace the saveAndShowConfirmation method:
+
     @objc private func saveAndShowConfirmation() {
         persistSettings()
         
-        // Show brief confirmation
+        // If we came from PDF generation, go back immediately
+        if cameFromPDFGeneration {
+            navigationController?.popViewController(animated: true)
+            return
+        }
+        
+        // Otherwise, show the confirmation animation as before
         let checkmark = UIImageView(image: UIImage(systemName: "checkmark.circle.fill"))
         checkmark.tintColor = .systemGreen
         checkmark.contentMode = .scaleAspectFit

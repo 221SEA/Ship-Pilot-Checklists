@@ -6,29 +6,19 @@
 import UIKit
 
 class CustomChecklistListViewController: UIViewController,
-                                          UITableViewDataSource,
-                                          UITableViewDelegate,
-                                          UITableViewDragDelegate,
-                                          UITableViewDropDelegate {
+                                         UITableViewDataSource,
+                                         UITableViewDelegate,
+                                         UITableViewDragDelegate,
+                                         UITableViewDropDelegate,
+                                         UIDocumentPickerDelegate {
 
     // MARK: - Data
     private var checklists: [CustomChecklist] = []
 
     // MARK: - UI
     private let tableView = UITableView(frame: .zero, style: .plain)
-
-    // “Add New Checklist +” button at the top
-    private lazy var addNewButton: UIButton = {
-        let btn = UIButton(type: .system)
-        btn.setTitle("Add New Checklist +", for: .normal)
-        btn.backgroundColor = ThemeManager.themeColor
-        btn.setTitleColor(.white, for: .normal)
-        btn.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold)
-        btn.layer.cornerRadius = 8
-        btn.contentEdgeInsets = UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
-        btn.addTarget(self, action: #selector(createNewChecklist), for: .touchUpInside)
-        return btn
-    }()
+    private let bottomToolbar = UIToolbar()
+    
 
     // MARK: - Lifecycle
 
@@ -50,13 +40,24 @@ class CustomChecklistListViewController: UIViewController,
         // 4) Load saved custom checklists
         checklists = CustomChecklistManager.shared.loadAll()
 
-        // 5) Add subviews: button + table
-        view.addSubview(addNewButton)
+        // 5) Add subviews
         view.addSubview(tableView)
+        view.addSubview(bottomToolbar)
 
         // 6) Turn off autoresizing masks
-        addNewButton.translatesAutoresizingMaskIntoConstraints = false
         tableView.translatesAutoresizingMaskIntoConstraints = false
+        bottomToolbar.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: bottomToolbar.topAnchor),
+
+            bottomToolbar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bottomToolbar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bottomToolbar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+        ])
 
         // 7) Set up tableView delegates/dataSource, register cell
         tableView.dataSource = self
@@ -69,19 +70,29 @@ class CustomChecklistListViewController: UIViewController,
             forCellReuseIdentifier: "CustomChecklistMenuCell"
         )
 
-        // 8) Constraints: button pinned to top, table pinned below it
-        NSLayoutConstraint.activate([
-            // “Add New Checklist +” button at very top (behind nav‐bar if opaque)
-                addNewButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
-                addNewButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-                addNewButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+        // ✅ 8) Set up toolbar items
+        setupToolbar()
+    }
+    private func setupToolbar() {
+        ThemeManager.applyToolbarAppearance(bottomToolbar, trait: traitCollection)
 
-            // tableView sits directly under the button, fills remainder
-            tableView.topAnchor.constraint(equalTo: addNewButton.bottomAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
+        let newButton = UIBarButtonItem(
+            title: "New Checklist",
+            style: .plain,
+            target: self,
+            action: #selector(createNewChecklist)
+        )
+
+        let importButton = UIBarButtonItem(
+            title: "Import .csv",
+            style: .plain,
+            target: self,
+            action: #selector(importCSVButtonTapped)
+        )
+
+        let spacer = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+
+        bottomToolbar.items = [newButton, spacer, importButton]
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -94,6 +105,7 @@ class CustomChecklistListViewController: UIViewController,
         checklists = CustomChecklistManager.shared.loadAll()
         tableView.reloadData()
     }
+    
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
@@ -102,8 +114,10 @@ class CustomChecklistListViewController: UIViewController,
         view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
         ThemeManager.apply(to: navigationController, traitCollection: traitCollection)
 
-        // Re‐apply button color
-        addNewButton.backgroundColor = ThemeManager.themeColor
+        // Re-apply appearance for toolbar
+        ThemeManager.applyToolbarAppearance(bottomToolbar, trait: traitCollection)
+
+        // Refresh table view colors if needed
         tableView.reloadData()
     }
 
@@ -129,6 +143,13 @@ class CustomChecklistListViewController: UIViewController,
         editorVC.checklist = newChecklist
         navigationController?.pushViewController(editorVC, animated: true)
     }
+    @objc private func importCSVButtonTapped() {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.commaSeparatedText], asCopy: true)
+        picker.delegate = self
+        picker.allowsMultipleSelection = false
+        present(picker, animated: true)
+    }
+    
     // MARK: - Share Checklist
         
         private func shareChecklist(_ checklist: CustomChecklist) {
@@ -213,42 +234,67 @@ class CustomChecklistListViewController: UIViewController,
 
     func tableView(
         _ tableView: UITableView,
-        didSelectRowAt indexPath: IndexPath
-    ) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        let detailVC = ChecklistViewController()
-        detailVC.customChecklist = checklists[indexPath.row]
-        navigationController?.pushViewController(detailVC, animated: true)
-    }
-
-    func tableView(
-        _ tableView: UITableView,
         trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath
     ) -> UISwipeActionsConfiguration? {
-        
-        // Share action (for exporting checklist to another pilot)
+
+        let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] _, _, completionHandler in
+            guard let self = self else {
+                completionHandler(false)
+                return
+            }
+
+            let checklist = self.checklists[indexPath.row]
+
+            let alert = UIAlertController(
+                title: "Delete Checklist",
+                message: "Are you sure you want to delete \"\(checklist.title)\"?",
+                preferredStyle: .alert
+            )
+
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+                completionHandler(false)
+            })
+
+            alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { _ in
+                self.checklists.remove(at: indexPath.row)
+                CustomChecklistManager.shared.delete(checklist)
+                tableView.deleteRows(at: [indexPath], with: .fade)
+                completionHandler(true)
+            })
+
+            self.present(alert, animated: true)
+        }
+
+        return UISwipeActionsConfiguration(actions: [deleteAction])
+    }
+    func tableView(
+        _ tableView: UITableView,
+        leadingSwipeActionsConfigurationForRowAt indexPath: IndexPath
+    ) -> UISwipeActionsConfiguration? {
+
+        // Share action
         let share = UIContextualAction(
-            style: .normal, title: "Share"
+            style: .normal,
+            title: "Share"
         ) { [weak self] _, _, completion in
             guard let self = self else { return }
             let checklistToShare = self.checklists[indexPath.row]
             self.shareChecklist(checklistToShare)
             completion(true)
         }
+
         share.backgroundColor = ThemeManager.themeColor
-        
-        // Delete action
-        let delete = UIContextualAction(
-            style: .destructive, title: "Delete"
-        ) { [weak self] _, _, completion in
-            guard let self = self else { return }
-            let removed = self.checklists.remove(at: indexPath.row)
-            CustomChecklistManager.shared.delete(removed)
-            tableView.deleteRows(at: [indexPath], with: .fade)
-            completion(true)
-        }
-        
-        return UISwipeActionsConfiguration(actions: [delete, share])
+
+        return UISwipeActionsConfiguration(actions: [share])
+    }
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+
+        let checklist = checklists[indexPath.row]
+
+        let checklistVC = ChecklistViewController() // Or whatever VC shows the checklist
+        checklistVC.customChecklist = checklist     // Assuming this is how you pass it
+        navigationController?.pushViewController(checklistVC, animated: true)
     }
 
     // Allow reordering
@@ -307,6 +353,22 @@ class CustomChecklistListViewController: UIViewController,
             operation: .move,
             intent: .insertAtDestinationIndexPath
         )
+    }
+    // MARK: - UIDocumentPickerDelegate
+
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first else { return }
+
+        // Manually trigger the same import logic used in SceneDelegate
+        let sceneDelegate = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive })?
+            .delegate as? UIWindowSceneDelegate
+
+        if let sd = sceneDelegate as? SceneDelegate {
+            sd.importChecklistFromCSV(url: url)
+        } else {
+            showAlert(title: "Import Failed", message: "Unable to access the current scene.")
+        }
     }
 }
 

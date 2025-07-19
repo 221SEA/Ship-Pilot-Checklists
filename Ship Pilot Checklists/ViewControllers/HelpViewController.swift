@@ -139,10 +139,16 @@ class HelpViewController: UIViewController {
         
         // Custom Checklists
         addTitle("CUSTOM CHECKLISTS")
-        addBullet("plus", text: "Create: Tap 'Add New Checklist +'")
-        addBullet("pencil.and.list.clipboard", text: "Convert: Tap clipboard icon on any included checklist")
-        addBullet("square.and.arrow.up", text: "Share: Swipe left → Share → send .shipchecklist file")
-        addBullet("square.and.arrow.down", text: "Import: Open received .shipchecklist files")
+        addBullet("plus", text: "Create: Tap 'Create New Checklist' to make a blank checklist")
+        addBullet("square.and.arrow.down", text: "Import Checklist: Tap 'Import Checklist from .csv' to import from Excel")
+        addBullet("info.circle", text: "The file must use 2 headers: Priority, Item")
+        addBullet("info.circle", text: "Each row defines one item under a category (like High, Medium, Low). You may name the categories however you like (Critical, Post Incident, etc.).")
+        addBullet("info.circle", text: "Save Excel file as: 'Comma Separated Values (.csv)', NOT UTF-8 format")
+        addBullet("square.and.arrow.up", text: "Share Custom Checklist: Swipe left → Share → send .shipchecklist file")
+        addBullet("pencil.and.list.clipboard", text: "Custom: Tap clipboard icon on any Included Checklist to send to Custom Checklists.")
+        addBullet("pencil", text: "Tap pencil icon to edit a custom checklist.")
+        addBullet("star", text: "Tap star icon to add checklist to Favorites.")
+
         
         // Contacts System
         addTitle("CONTACTS")

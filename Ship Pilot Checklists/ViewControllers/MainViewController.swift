@@ -31,7 +31,8 @@ class MainViewController: UIViewController {
             makeNavButton(title: "Included Checklists", icon: "list.clipboard"),
             makeNavButton(title: "Custom Checklists", icon: "pencil.and.list.clipboard"),
             makeNavButton(title: "Favorites", icon: "star"),
-            makeNavButton(title: "Contacts", icon: "person.2")  // NEW
+            makeNavButton(title: "Contacts", icon: "person.2"),
+            makeNavButton(title: "Saved Files", icon: "folder")
         ])
         stackView.axis = .vertical
         stackView.spacing = 20
@@ -130,8 +131,10 @@ class MainViewController: UIViewController {
             button.addTarget(self, action: #selector(openCustomChecklists), for: .touchUpInside)
         case "Favorites":
             button.addTarget(self, action: #selector(openFavorites), for: .touchUpInside)
-        case "Contacts":  // NEW
-            button.addTarget(self, action: #selector(openContacts), for: .touchUpInside)  // NEW
+        case "Contacts":
+            button.addTarget(self, action: #selector(openContacts), for: .touchUpInside)
+        case "Saved Files":
+            button.addTarget(self, action: #selector(openSavedFiles), for: .touchUpInside)
         default: break
         }
         return button
@@ -178,7 +181,11 @@ class MainViewController: UIViewController {
 
         navigationItem.rightBarButtonItems = [profile, toggle]
     }
-
+    @objc private func openSavedFiles() {
+        let vc = SavedFilesViewController()
+        applyUserInterfaceStyle(to: vc)
+        navigationController?.pushViewController(vc, animated: true)
+    }
     @objc private func presentSearchViewController() {
         let searchVC = SearchViewController()
         let nav = UINavigationController(rootViewController: searchVC)

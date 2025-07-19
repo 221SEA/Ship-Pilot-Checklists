@@ -47,6 +47,12 @@ struct ContactCategory: Codable {
         self.contacts = []
         self.isSystemCategory = isSystemCategory
     }
+    init(name: String, contacts: [OperationalContact], isSystemCategory: Bool = false) {
+        self.id = UUID()
+        self.name = name
+        self.contacts = contacts
+        self.isSystemCategory = isSystemCategory
+    }
 }
 
 // MARK: - Contact Manager
@@ -99,6 +105,12 @@ class ContactsManager {
         categories.append(newCategory)
         saveCategories(categories)
     }
+    // MARK: - Add Category with Contacts
+    func addCategory(name: String, contacts: [OperationalContact], to categories: inout [ContactCategory]) {
+        let newCategory = ContactCategory(name: name, contacts: contacts, isSystemCategory: false)
+        categories.append(newCategory)
+        saveCategories(categories)
+    }
     
     // MARK: - Delete Category
     func deleteCategory(at index: Int, from categories: inout [ContactCategory]) {
@@ -108,6 +120,16 @@ class ContactsManager {
         saveCategories(categories)
     }
     
+    // MARK: - Bulk Add Contacts
+    func addContacts(_ contacts: [OperationalContact], toCategoryNamed name: String, in categories: inout [ContactCategory]) {
+        if let index = categories.firstIndex(where: { $0.name == name }) {
+            categories[index].contacts.append(contentsOf: contacts)
+        } else {
+            let newCategory = ContactCategory(name: name, contacts: contacts)
+            categories.append(newCategory)
+        }
+        saveCategories(categories)
+    }
     // MARK: - Add Contact
     func addContact(_ contact: OperationalContact, to categoryIndex: Int, in categories: inout [ContactCategory]) {
         categories[categoryIndex].contacts.append(contact)

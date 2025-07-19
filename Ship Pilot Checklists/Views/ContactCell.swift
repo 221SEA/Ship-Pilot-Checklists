@@ -36,11 +36,20 @@ class ContactCell: UITableViewCell {
     }
     
     // MARK: - Setup
+    // In ContactCell.swift, replace the entire setupViews() method:
+
     private func setupViews() {
-        // Configure stack view
+        // Configure main stack view first
         stackView.axis = .vertical
         stackView.spacing = 4
         stackView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Configure button stack view
+        buttonStackView.axis = .vertical
+        buttonStackView.spacing = 12
+        buttonStackView.alignment = .center
+        buttonStackView.distribution = .fill
+        buttonStackView.translatesAutoresizingMaskIntoConstraints = false
         
         // Configure labels
         nameLabel.font = .systemFont(ofSize: 17, weight: .semibold)
@@ -69,21 +78,14 @@ class ContactCell: UITableViewCell {
         let callConfig = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
         callButton.setImage(UIImage(systemName: "phone", withConfiguration: callConfig), for: .normal)
         callButton.addTarget(self, action: #selector(callTapped), for: .touchUpInside)
+        callButton.contentMode = .center
         
         let textConfig = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
         textButton.setImage(UIImage(systemName: "message", withConfiguration: textConfig), for: .normal)
         textButton.addTarget(self, action: #selector(textTapped), for: .touchUpInside)
+        textButton.contentMode = .center
         
-        // Configure button stack
-        buttonStackView.axis = .vertical
-        buttonStackView.spacing = 12
-        buttonStackView.alignment = .center
-        buttonStackView.translatesAutoresizingMaskIntoConstraints = false
-        
-        buttonStackView.addArrangedSubview(callButton)
-        buttonStackView.addArrangedSubview(textButton)
-        
-        // Add labels to stack view
+        // Add labels to main stack view
         stackView.addArrangedSubview(nameLabel)
         stackView.addArrangedSubview(roleLabel)
         stackView.addArrangedSubview(organizationLabel)
@@ -91,22 +93,28 @@ class ContactCell: UITableViewCell {
         stackView.addArrangedSubview(vhfLabel)
         stackView.addArrangedSubview(categoryLabel)
         
-        // Add to content view
+        // Add buttons to button stack view
+        buttonStackView.addArrangedSubview(callButton)
+        buttonStackView.addArrangedSubview(textButton)
+        
+        // Add both stack views to content view
         contentView.addSubview(stackView)
         contentView.addSubview(buttonStackView)
         
         // Setup constraints
         NSLayoutConstraint.activate([
+            // Main stack view constraints
             stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             stackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
             stackView.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12),
             stackView.trailingAnchor.constraint(equalTo: buttonStackView.leadingAnchor, constant: -12),
             
+            // Button stack view constraints
             buttonStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             buttonStackView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             buttonStackView.widthAnchor.constraint(equalToConstant: 44),
             
-            // Add minimum height constraint to ensure buttons are never cut off
+            // Minimum height constraint
             contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 88)
         ])
     }

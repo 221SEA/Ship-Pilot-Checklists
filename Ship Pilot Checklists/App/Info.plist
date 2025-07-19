@@ -43,10 +43,21 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>com.JillRussell.Ship-Pilot-Checklists.shipchecklist</string>
+                <string>public.json</string>
 			</array>
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
 		</dict>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>CSV Checklist</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.comma-separated-values-text</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+        </dict>
 	</array>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
@@ -75,5 +86,29 @@
 			</dict>
 		</dict>
 	</array>
+    <key>UTImportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>public.comma-separated-values-text</string>
+            <key>UTTypeDescription</key>
+            <string>CSV Checklist File</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.text</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>csv</string>
+                </array>
+                <key>public.mime-type</key>
+                <array>
+                    <string>text/csv</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
 </dict>
 </plist>

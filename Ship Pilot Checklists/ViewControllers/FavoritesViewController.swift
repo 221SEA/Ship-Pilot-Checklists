@@ -24,17 +24,37 @@ class FavoritesViewController: UIViewController {
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private var categories: [FavoriteCategory] = []
     private let defaultsKey = "FavoritesCategories"
+    private let bottomToolbar = UIToolbar()
 
     // MARK: – Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+
         edgesForExtendedLayout = [.all]
         extendedLayoutIncludesOpaqueBars = true
         overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
         title = "Favorites"
         view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
-        setupHeader()
+
+        view.addSubview(tableView)
+        view.addSubview(bottomToolbar)
+
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        bottomToolbar.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: bottomToolbar.topAnchor),
+
+            bottomToolbar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bottomToolbar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bottomToolbar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+        ])
+
         setupTableView()
+        setupToolbar()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -44,43 +64,19 @@ class FavoritesViewController: UIViewController {
         tableView.reloadData()
     }
 
-    override func traitCollectionDidChange(_ previous: UITraitCollection?) {
-        super.traitCollectionDidChange(previous)
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        
         view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
         ThemeManager.apply(to: navigationController, traitCollection: traitCollection)
+        ThemeManager.applyToolbarAppearance(bottomToolbar, trait: traitCollection)
+        
         tableView.reloadData()
     }
 
     // MARK: – Setup
-    private func setupHeader() {
-        let header = UIView()
-        header.backgroundColor = .clear
-
-        let btn = UIButton(type: .system)
-        btn.setTitle("Add Category +", for: .normal)
-        btn.backgroundColor = ThemeManager.themeColor
-        btn.setTitleColor(.white, for: .normal)
-        btn.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold)
-        btn.layer.cornerRadius = 8
-        btn.contentEdgeInsets = .init(top:12, left:16, bottom:12, right:16)
-        btn.addTarget(self, action: #selector(addCategoryTapped), for: .touchUpInside)
-
-        header.addSubview(btn)
-        btn.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            btn.topAnchor.constraint(equalTo: header.topAnchor, constant: 8),
-            btn.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 16),
-            btn.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -16),
-            btn.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -8)
-        ])
-
-        let h = btn.intrinsicContentSize.height + 16
-        header.frame = CGRect(x:0, y:0, width:view.bounds.width, height:h)
-        tableView.tableHeaderView = header
-    }
     
     private func setupTableView() {
-        view.addSubview(tableView)
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.dataSource = self
         tableView.delegate = self
@@ -91,12 +87,33 @@ class FavoritesViewController: UIViewController {
         // UPDATED: Register our new custom FavoriteCell
         tableView.register(FavoriteCell.self, forCellReuseIdentifier: "FavoriteCell")
 
-        NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.topAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
+        // No need to redefine constraints here — handled in viewDidLoad()
+    }
+    private func setupToolbar() {
+        ThemeManager.applyToolbarAppearance(bottomToolbar, trait: traitCollection)
+
+        let addCategoryButton = UIBarButtonItem(
+            title: "Add Category",
+            style: .plain,
+            target: self,
+            action: #selector(addCategoryTapped)
+        )
+
+        let spacer = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+
+        bottomToolbar.items = [spacer, addCategoryButton, spacer]
+
+        // Fix the height by applying standard appearance with background + spacing
+        if #available(iOS 13.0, *) {
+            let appearance = UIToolbarAppearance()
+            appearance.configureWithOpaqueBackground()
+            appearance.backgroundColor = ThemeManager.navBarColor(for: traitCollection)
+            appearance.shadowColor = .clear
+            bottomToolbar.standardAppearance = appearance
+            if #available(iOS 15.0, *) {
+                bottomToolbar.scrollEdgeAppearance = appearance
+            }
+        }
     }
 
     // MARK: – Persistence & Actions
