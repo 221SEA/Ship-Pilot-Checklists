@@ -1870,20 +1870,26 @@ extension ChecklistViewController {
                     y += noteSz.height + 6
                 }
                 
-                // Photos - Show up to 4 in a row
-                let thumb: CGFloat = 40
-                let photoSpacing: CGFloat = 6
+                // Replace the photo rendering section in drawPDFSections method
+
+                // Photos - Show up to 4 in a row, all uniform size, left-aligned
                 let photosToShow = min(item.photoFilenames.count, 4)
-                
+
                 if photosToShow > 0 {
+                    let photoSize: CGFloat = 90 // Fixed size for all photos
+                    let photoSpacing: CGFloat = 8
+                    
+                    // Left-align photos starting at the same indent as text
+                    let photoStartX = margin + 20
+                    
                     for (i, fn) in item.photoFilenames.prefix(4).enumerated() {
                         if let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first,
                            let img = UIImage(contentsOfFile: docs.appendingPathComponent(fn).path) {
-                            let x = margin + 20 + CGFloat(i) * (thumb + photoSpacing)
-                            img.draw(in: CGRect(x: x, y: y, width: thumb, height: thumb))
+                            let x = photoStartX + CGFloat(i) * (photoSize + photoSpacing)
+                            img.draw(in: CGRect(x: x, y: y, width: photoSize, height: photoSize))
                         }
                     }
-                    y += thumb + 8
+                    y += photoSize + 12 // Extra spacing after photos
                 }
                 
                 // Page break
