@@ -22,7 +22,8 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
     private var expandedSections = Set<Int>()
     
     // NEW: Flag to open directly to Emergency category
-    var openToEmergencyCategory = false  // ← PUT IT HERE, OUTSIDE of isSearching
+    var openToEmergencyCategory = false
+    var returnToChecklist: (() -> Void)?
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -57,29 +58,28 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
     }
     
     override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        
-        // If we should open to Emergency category
-        if openToEmergencyCategory {
-            openToEmergencyCategory = false // Reset flag
+            super.viewDidAppear(animated)
             
-            // Find Emergency category index
-            if let emergencyIndex = categories.firstIndex(where: { $0.name == "Emergency" }) {
-                // Scroll to Emergency section
-                let indexPath = IndexPath(row: 0, section: emergencyIndex)
-                if categories[emergencyIndex].contacts.isEmpty {
-                    // If no contacts, prompt to add one
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        self.addContactToCategory(at: emergencyIndex)
+            // If we should open to Emergency category
+            if openToEmergencyCategory {
+                openToEmergencyCategory = false // Reset flag
+                
+                // Find Emergency category index
+                if let emergencyIndex = categories.firstIndex(where: { $0.name == "Emergency" }) {
+                    // Scroll to Emergency section
+                    let indexPath = IndexPath(row: 0, section: emergencyIndex)
+                    if categories[emergencyIndex].contacts.isEmpty {
+                        // If no contacts, prompt to add one
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            self.addContactToCategory(at: emergencyIndex)
+                        }
+                    } else {
+                        // Scroll to show the Emergency section
+                        tableView.scrollToRow(at: indexPath, at: .top, animated: true)
                     }
-                } else {
-                    // Scroll to show the Emergency section
-                    tableView.scrollToRow(at: indexPath, at: .top, animated: true)
                 }
             }
         }
-    }
-    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
 
@@ -749,12 +749,26 @@ extension ContactsViewController: MFMessageComposeViewControllerDelegate {
 // MARK: - ContactEditorDelegate
 extension ContactsViewController: ContactEditorDelegate {
     func contactEditor(_ editor: ContactEditorViewController, didSave contact: OperationalContact, mode: ContactEditorMode) {
-        switch mode {
-        case .add(let categoryIndex):
-            ContactsManager.shared.addContact(contact, to: categoryIndex, in: &categories)
-        case .edit(_, let indexPath):
-            ContactsManager.shared.updateContact(contact, at: indexPath, in: &categories)
+            switch mode {
+            case .add(let categoryIndex):
+                ContactsManager.shared.addContact(contact, to: categoryIndex, in: &categories)
+                
+                // Check if we just added an emergency contact and have a return path
+                let categoryName = categories[categoryIndex].name
+                if categoryName == "Emergency" && returnToChecklist != nil {
+                    // Added emergency contact - trigger return after a brief delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        if let returnHandler = self.returnToChecklist {
+                            self.dismiss(animated: true) {
+                                returnHandler()
+                            }
+                        }
+                    }
+                }
+                
+            case .edit(_, let indexPath):
+                ContactsManager.shared.updateContact(contact, at: indexPath, in: &categories)
+            }
+            tableView.reloadData()
         }
-        tableView.reloadData()
     }
-}

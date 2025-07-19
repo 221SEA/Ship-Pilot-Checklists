@@ -40,6 +40,8 @@ Make sure to save your changes before leaving this screen.
     
     // Track if we came from PDF generation
     var cameFromPDFGeneration = false
+    var returnToChecklist: (() -> Void)?
+    var returnToChecklistForPDF: (() -> Void)?
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -184,71 +186,87 @@ Make sure to save your changes before leaving this screen.
     // In SettingsViewController.swift, replace the saveAndShowConfirmation method:
 
     @objc private func saveAndShowConfirmation() {
-        persistSettings()
-        
-        // If we came from PDF generation, go back immediately
-        if cameFromPDFGeneration {
-            navigationController?.popViewController(animated: true)
-            return
-        }
-        
-        // Otherwise, show the confirmation animation as before
-        let checkmark = UIImageView(image: UIImage(systemName: "checkmark.circle.fill"))
-        checkmark.tintColor = .systemGreen
-        checkmark.contentMode = .scaleAspectFit
-        
-        let label = UILabel()
-        label.text = "Saved"
-        label.textColor = .label
-        label.font = .systemFont(ofSize: 16, weight: .medium)
-        
-        let containerView = UIView()
-        containerView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
-        containerView.layer.cornerRadius = 12
-        containerView.layer.shadowColor = UIColor.black.cgColor
-        containerView.layer.shadowOpacity = 0.2
-        containerView.layer.shadowOffset = CGSize(width: 0, height: 2)
-        containerView.layer.shadowRadius = 4
-        
-        containerView.addSubview(checkmark)
-        containerView.addSubview(label)
-        
-        checkmark.translatesAutoresizingMaskIntoConstraints = false
-        label.translatesAutoresizingMaskIntoConstraints = false
-        containerView.translatesAutoresizingMaskIntoConstraints = false
-        
-        view.addSubview(containerView)
-        
-        NSLayoutConstraint.activate([
-            checkmark.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
-            checkmark.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            checkmark.widthAnchor.constraint(equalToConstant: 24),
-            checkmark.heightAnchor.constraint(equalToConstant: 24),
+            persistSettings()
             
-            label.leadingAnchor.constraint(equalTo: checkmark.trailingAnchor, constant: 8),
-            label.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
-            label.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            // If we have a return path for PDF generation, use it
+            if let pdfReturnHandler = returnToChecklistForPDF {
+                dismiss(animated: true) {
+                    pdfReturnHandler()
+                }
+                return
+            }
             
-            containerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            containerView.heightAnchor.constraint(equalToConstant: 50)
-        ])
-        
-        containerView.alpha = 0
-        containerView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
-        
-        UIView.animate(withDuration: 0.3, animations: {
-            containerView.alpha = 1
-            containerView.transform = .identity
-        }) { _ in
-            UIView.animate(withDuration: 0.2, delay: 0.5, options: [], animations: {
-                containerView.alpha = 0
-                containerView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+            // If we have a return path for emergency SMS flow, use it
+            if let returnHandler = returnToChecklist {
+                dismiss(animated: true) {
+                    returnHandler()
+                }
+                return
+            }
+            
+            // If we came from PDF generation, go back immediately
+            if cameFromPDFGeneration {
+                navigationController?.popViewController(animated: true)
+                return
+            }
+            
+            // Otherwise, show the confirmation animation as before
+            let checkmark = UIImageView(image: UIImage(systemName: "checkmark.circle.fill"))
+            checkmark.tintColor = .systemGreen
+            checkmark.contentMode = .scaleAspectFit
+            
+            let label = UILabel()
+            label.text = "Saved"
+            label.textColor = .label
+            label.font = .systemFont(ofSize: 16, weight: .medium)
+            
+            let containerView = UIView()
+            containerView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+            containerView.layer.cornerRadius = 12
+            containerView.layer.shadowColor = UIColor.black.cgColor
+            containerView.layer.shadowOpacity = 0.2
+            containerView.layer.shadowOffset = CGSize(width: 0, height: 2)
+            containerView.layer.shadowRadius = 4
+            
+            containerView.addSubview(checkmark)
+            containerView.addSubview(label)
+            
+            checkmark.translatesAutoresizingMaskIntoConstraints = false
+            label.translatesAutoresizingMaskIntoConstraints = false
+            containerView.translatesAutoresizingMaskIntoConstraints = false
+            
+            view.addSubview(containerView)
+            
+            NSLayoutConstraint.activate([
+                checkmark.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+                checkmark.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+                checkmark.widthAnchor.constraint(equalToConstant: 24),
+                checkmark.heightAnchor.constraint(equalToConstant: 24),
+                
+                label.leadingAnchor.constraint(equalTo: checkmark.trailingAnchor, constant: 8),
+                label.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+                label.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+                
+                containerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+                containerView.heightAnchor.constraint(equalToConstant: 50)
+            ])
+            
+            containerView.alpha = 0
+            containerView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+            
+            UIView.animate(withDuration: 0.3, animations: {
+                containerView.alpha = 1
+                containerView.transform = .identity
             }) { _ in
-                containerView.removeFromSuperview()
+                UIView.animate(withDuration: 0.2, delay: 0.5, options: [], animations: {
+                    containerView.alpha = 0
+                    containerView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+                }) { _ in
+                    containerView.removeFromSuperview()
+                }
             }
         }
-    }
 
     @objc private func nameChanged(_ tf: UITextField) {
         pilotName = tf.text ?? ""

@@ -555,10 +555,12 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
 
     // MARK: — Emergency Flow
 
+    // PART 1: Replace the emergency SMS alerts in ChecklistViewController.swift
+
     @objc private func emergencyTapped() {
+        // Check pilot name first
         if pilotName.trimmingCharacters(in: .whitespaces).isEmpty {
-            showAlert(title: "Name Missing",
-                      message: "Please enter your name in Profile before sending an emergency text.")
+            showNameMissingAlert()
             return
         }
         
@@ -568,46 +570,115 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
         let emergencyContacts = emergencyCategory?.contacts ?? []
         
         guard !emergencyContacts.isEmpty else {
-            showAlert(title: "No Emergency Contacts",
-                      message: "Please add emergency contacts in Contacts > Emergency category first.")
+            showEmergencyContactsMissingAlert()
             return
         }
         
-        // Check if location/tide/wind data is missing
-        var missingData: [String] = []
-        if latestLocation == nil {
-            missingData.append("GPS location (press globe button)")
-        }
-        if lastFetchedTideLines == nil {
-            missingData.append("Tide data (press water/arrow button)")
-        }
-        if lastFetchedWindLines == nil {
-            missingData.append("Wind data (press wind button)")
-        }
+        // Check if they have ANY useful data - if so, don't nag them
+        let currentNotes = notesTextView.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasNotes = !currentNotes.isEmpty && currentNotes != "Notes..."
+        let hasLocation = latestLocation != nil
+        let hasTideData = lastFetchedTideLines != nil
+        let hasWindData = lastFetchedWindLines != nil
         
-        if !missingData.isEmpty {
-            let message = "Your emergency SMS will be more helpful with:\n\n" + missingData.joined(separator: "\n") + "\n\nWould you like to add this data first?"
+        let hasAnyData = hasNotes || hasLocation || hasTideData || hasWindData
+        
+        if !hasAnyData {
+            let message = "No data has been added to enhance this emergency SMS. You can add location (globe), tide (waves), wind, or notes to provide more context.\n\nSend emergency SMS anyway?"
             
             let alert = UIAlertController(
-                title: "Enhance Emergency SMS",
+                title: "Send Emergency SMS?",
                 message: message,
                 preferredStyle: .alert
             )
             
-            alert.addAction(UIAlertAction(title: "Add Data First", style: .default) { _ in
-                // Could potentially auto-trigger the first missing data fetch here
-                if self.latestLocation == nil {
-                    self.addLocationToNotes()
-                }
+            alert.addAction(UIAlertAction(title: "Add Data First", style: .cancel) { _ in
+                // Just dismiss - they can add data and try again
             })
             
-            alert.addAction(UIAlertAction(title: "Send Without Data", style: .cancel) { _ in
+            alert.addAction(UIAlertAction(title: "Send Now", style: .default) { _ in
                 self.proceedWithEmergencyContacts()
             })
             
             present(alert, animated: true)
         } else {
             proceedWithEmergencyContacts()
+        }
+    }
+
+    // PART 2: New alert methods that offer navigation
+
+    private func showNameMissingAlert() {
+        let alert = UIAlertController(
+            title: "Name Missing",
+            message: "Your name is required for emergency SMS messages. Would you like to add it now?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Not Now", style: .cancel))
+        
+        alert.addAction(UIAlertAction(title: "Add Name", style: .default) { _ in
+            self.navigateToProfile()
+        })
+        
+        present(alert, animated: true)
+    }
+
+    private func showEmergencyContactsMissingAlert() {
+        let alert = UIAlertController(
+            title: "No Emergency Contacts",
+            message: "Emergency contacts are required for SMS messages. Would you like to add them now?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Not Now", style: .cancel))
+        
+        alert.addAction(UIAlertAction(title: "Add Contacts", style: .default) { _ in
+            self.navigateToEmergencyContacts()
+        })
+        
+        present(alert, animated: true)
+    }
+
+    // PART 3: Navigation methods
+
+    private func navigateToProfile() {
+        // Pop back to main view controller
+        guard let mainVC = navigationController?.viewControllers.first as? MainViewController else {
+            // Fallback: just pop to root
+            navigationController?.popToRootViewController(animated: true)
+            return
+        }
+        
+        // Pop to main with a flag to return to this checklist
+        navigationController?.popToViewController(mainVC, animated: true)
+        
+        // Tell main view to open profile and then return to this checklist
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            mainVC.openProfileWithReturnPath(
+                checklist: self.checklist,
+                customChecklist: self.customChecklist
+            )
+        }
+    }
+
+    private func navigateToEmergencyContacts() {
+        // Pop back to main view controller
+        guard let mainVC = navigationController?.viewControllers.first as? MainViewController else {
+            // Fallback: just pop to root
+            navigationController?.popToRootViewController(animated: true)
+            return
+        }
+        
+        // Pop to main with a flag to return to this checklist
+        navigationController?.popToViewController(mainVC, animated: true)
+        
+        // Tell main view to open emergency contacts and then return to this checklist
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            mainVC.openContactsWithReturnPath(
+                checklist: self.checklist,
+                customChecklist: self.customChecklist
+            )
         }
     }
     private func proceedWithEmergencyContacts() {
@@ -1523,37 +1594,63 @@ extension ChecklistViewController {
         })
         present(alert, animated: true)
     }
-    
+
+    // Replace the generatePDF() method in ChecklistViewController.swift
+
     private func generatePDF() {
         // Check if pilot name is set up
         let pilotName = UserDefaults.standard.string(forKey: "pilotName") ?? ""
         if pilotName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let alert = UIAlertController(
-                title: "Add Your Name",
-                message: "Add your name in Profile for better PDF headers.",
-                preferredStyle: .alert
-            )
-            
-            alert.addAction(UIAlertAction(title: "Generate Anyway", style: .cancel) { _ in
-                self.promptForVesselAndGeneratePDF()
-            })
-            
-            alert.addAction(UIAlertAction(title: "Add Name", style: .default) { _ in
-                // Navigate back to main, then to profile
-                self.navigationController?.popToRootViewController(animated: true)
-                if let mainVC = self.navigationController?.topViewController as? MainViewController {
-                    mainVC.openProfile()
-                }
-            })
-            
-            present(alert, animated: true)
+            showPDFNameMissingAlert()
             return
         }
         
         // If name is set, prompt for vessel and proceed
         promptForVesselAndGeneratePDF()
     }
-    private func promptForVesselAndGeneratePDF() {
+
+    // Add this new alert method for PDF generation
+    private func showPDFNameMissingAlert() {
+        let alert = UIAlertController(
+            title: "Add Your Name",
+            message: "Your name is needed for PDF headers. Would you like to add it now?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Generate Anyway", style: .cancel) { _ in
+            self.promptForVesselAndGeneratePDF()
+        })
+        
+        alert.addAction(UIAlertAction(title: "Add Name", style: .default) { _ in
+            self.navigateToPDFProfile()
+        })
+        
+        present(alert, animated: true)
+    }
+
+    // Add this new navigation method for PDF flow
+    private func navigateToPDFProfile() {
+        // Pop back to main view controller
+        guard let mainVC = navigationController?.viewControllers.first as? MainViewController else {
+            // Fallback: just pop to root
+            navigationController?.popToRootViewController(animated: true)
+            return
+        }
+        
+        // Pop to main with a flag to return to this checklist
+        navigationController?.popToViewController(mainVC, animated: true)
+        
+        // Tell main view to open profile and then return to this checklist for PDF generation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            mainVC.openProfileWithPDFReturnPath(
+                checklist: self.checklist,
+                customChecklist: self.customChecklist
+            )
+        }
+    }
+
+    // IMPORTANT: Make this internal so MainViewController can call it
+    func promptForVesselAndGeneratePDF() {
         promptForVesselName(
             title: "Generate PDF",
             message: "What vessel are you on?",
@@ -1563,7 +1660,7 @@ extension ChecklistViewController {
             self.askAboutCaptainSignature()
         }
     }
-    
+
     private func actuallyGeneratePDF() {
         guard let vesselName = pendingVesselName else { return }
         

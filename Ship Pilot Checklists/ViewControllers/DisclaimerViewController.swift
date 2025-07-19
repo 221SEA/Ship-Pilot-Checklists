@@ -102,11 +102,16 @@ class DisclaimerViewController: UIViewController {
             alert.addAction(UIAlertAction(title: "Skip for Now", style: .cancel))
             
             alert.addAction(UIAlertAction(title: "Set Up Now", style: .default) { _ in
-                // Navigate to profile
+                // Navigate to profile using the simple method
                 if let window = UIApplication.shared.windows.first,
                    let navController = window.rootViewController as? UINavigationController,
                    let mainVC = navController.topViewController as? MainViewController {
-                    mainVC.openProfile()
+                    // Use the simple openProfile method for disclaimer flow
+                    let settingsVC = SettingsViewController()
+                    settingsVC.cameFromPDFGeneration = true
+                    let nav = UINavigationController(rootViewController: settingsVC)
+                    ThemeManager.apply(to: nav, traitCollection: nav.traitCollection)
+                    mainVC.present(nav, animated: true)
                 }
             })
             
