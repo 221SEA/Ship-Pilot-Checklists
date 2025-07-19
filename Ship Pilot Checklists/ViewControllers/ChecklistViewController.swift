@@ -866,6 +866,9 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
                 self?.pendingPhotoIndexPath = indexPath
                 self?.presentImagePicker()
             }
+            cell.photoTapped = { [weak self] photoIndex in
+                self?.handlePhotoTap(at: indexPath, photoIndex: photoIndex)
+            }
 
             return cell
         }
@@ -945,6 +948,64 @@ extension ChecklistViewController {
             // Only reload the specific row that changed, not the entire table
             self.tableView.reloadRows(at: [indexPath], with: .none)
         }
+    }
+    private func handlePhotoTap(at indexPath: IndexPath, photoIndex: Int) {
+        let items = checklist?.sections[indexPath.section].items
+                 ?? customChecklist?.sections[indexPath.section].items
+                 ?? []
+        
+        guard photoIndex < items[indexPath.row].photoFilenames.count else { return }
+        
+        let filename = items[indexPath.row].photoFilenames[photoIndex]
+        
+        let alert = UIAlertController(title: "Photo Options", message: nil, preferredStyle: .actionSheet)
+        
+        alert.addAction(UIAlertAction(title: "View Full Size", style: .default) { _ in
+            self.showFullSizePhoto(filename: filename)
+        })
+        
+        alert.addAction(UIAlertAction(title: "Remove Photo", style: .destructive) { _ in
+            self.removePhoto(at: indexPath, photoIndex: photoIndex)
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        if let popover = alert.popoverPresentationController {
+            popover.sourceView = tableView
+            popover.sourceRect = tableView.rectForRow(at: indexPath)
+        }
+        
+        present(alert, animated: true)
+    }
+
+    private func showFullSizePhoto(filename: String) {
+        guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first,
+              let image = UIImage(contentsOfFile: documentsURL.appendingPathComponent(filename).path) else {
+            showAlert(title: "Error", message: "Could not load photo.")
+            return
+        }
+        
+        let photoViewer = PhotoViewerViewController(image: image)
+        photoViewer.modalPresentationStyle = .overFullScreen
+        present(photoViewer, animated: true)
+    }
+
+    private func removePhoto(at indexPath: IndexPath, photoIndex: Int) {
+        if var c = checklist {
+            let filename = c.sections[indexPath.section].items[indexPath.row].photoFilenames[photoIndex]
+            c.sections[indexPath.section].items[indexPath.row].photoFilenames.remove(at: photoIndex)
+            checklist = c
+            deletePhotoFile(filename: filename)
+            saveBuiltInChecklistState()
+        } else if var c = customChecklist {
+            let filename = c.sections[indexPath.section].items[indexPath.row].photoFilenames[photoIndex]
+            c.sections[indexPath.section].items[indexPath.row].photoFilenames.remove(at: photoIndex)
+            customChecklist = c
+            deletePhotoFile(filename: filename)
+            CustomChecklistManager.shared.update(c)
+        }
+        
+        tableView.reloadRows(at: [indexPath], with: .automatic)
     }
     private func addFilenameToItem(at path: IndexPath, filename: String) {
         if var c = checklist {

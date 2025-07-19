@@ -19,6 +19,7 @@ class ChecklistCell: UITableViewCell {
     var checkboxTapped: (() -> Void)?
     var noteTapped: (() -> Void)?
     var cameraTapped: (() -> Void)?
+    var photoTapped: ((Int) -> Void)?
     
     // MARK: - Private properties
     private var detailsContainerHeightConstraint: NSLayoutConstraint!
@@ -182,8 +183,8 @@ class ChecklistCell: UITableViewCell {
         pencilButton.tintColor = active
         
         // Camera button state
-        cameraButton.tintColor = item.photoFilenames.count < 2 ? active : disabled
-        cameraButton.isEnabled = item.photoFilenames.count < 2
+        cameraButton.tintColor = item.photoFilenames.count < 4 ? active : disabled
+        cameraButton.isEnabled = item.photoFilenames.count < 4
 
         // Configure details
         configureDetails(item: item)
@@ -376,54 +377,9 @@ class ChecklistCell: UITableViewCell {
     }
     
     @objc private func photoTapped(_ gesture: UITapGestureRecognizer) {
-        print("🔥 photoTapped called!") // Debug line - this should appear if tap works
-        
-        guard let imageView = gesture.view as? UIImageView else {
-            print("❌ Could not get imageView from tap")
-            return
-        }
-        
-        let index = imageView.tag
-        print("✅ Tapped photo at index: \(index)") // Debug line
-        
-        // Make sure we have the filename for this index
-        guard index < currentPhotoFilenames.count else {
-            print("❌ Index out of bounds for filenames")
-            return
-        }
-        
-        let filename = currentPhotoFilenames[index]
-        print("📁 Loading full image for: \(filename)") // Debug line
-        
-        // Load the full-size image
-        guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            print("❌ Could not get documents directory")
-            return
-        }
-        
-        let fileURL = documentsURL.appendingPathComponent(filename)
-        
-        guard let data = try? Data(contentsOf: fileURL),
-              let fullImage = UIImage(data: data) else {
-            print("❌ Could not load full image from: \(fileURL)")
-            return
-        }
-        
-        print("🖼️ Successfully loaded full image, presenting viewer")
-        
-        // Find the view controller to present the photo viewer
-        var responder: UIResponder? = self
-        while responder != nil {
-            if let viewController = responder as? UIViewController {
-                print("🎯 Found view controller, presenting photo viewer")
-                let photoViewer = PhotoViewerViewController(image: fullImage)
-                photoViewer.modalPresentationStyle = .fullScreen
-                viewController.present(photoViewer, animated: true)
-                return
-            }
-            responder = responder?.next
-        }
-        print("❌ Could not find view controller")
+        guard let imageView = gesture.view as? UIImageView else { return }
+        let photoIndex = imageView.tag
+        photoTapped?(photoIndex)
     }
     
     // MARK: - Cell Lifecycle
