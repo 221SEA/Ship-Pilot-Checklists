@@ -68,17 +68,16 @@ public struct IncludedChecklists {
                 ChecklistSection(title: "High Priority", items: [
                     ChecklistItem(title: "Take notes / start an audio recording", isChecked: false),
                     ChecklistItem(title: "Stop external operations (tendering, cargo loading)", isChecked: false),
-                    ChecklistItem(title: "Bring engine(s), thrusters online", isChecked: false),
-                    ChecklistItem(title: "Assess drag rate and direction", isChecked: false),
-                    ChecklistItem(title: "Calculate time to danger (shoals, other vessels)", isChecked: false),
-                    ChecklistItem(title: "IF sea room permits, increase scope & determine if that slows rate of dragging", isChecked: false),
-                    ChecklistItem(title: "If necessary, apply engine(s) ahead and rudder towards anchor location to reduce strain", isChecked: false),
-                    ChecklistItem(title: "Consider weighing anchor: close proximity to danger, anchor continues to drag despite increase in scope, weather worsens", isChecked: false),
-                    ChecklistItem(title: "Consider outside maneuvering assistance [tugs, other vessels]", isChecked: false)
+                    ChecklistItem(title: "Bring engine(s), thrusters online; manual steering", isChecked: false),
+                    ChecklistItem(title: "Utilize navigational resources: Determine & log ship's position; assess set & drift; identify immediate threats; verify UKC; calculate time to danger", isChecked: false),
+                    ChecklistItem(title: "If sea room permits, increase scope & consider letting go second anchor; take into account cable areas, submarine pipelines, etc", isChecked: false),
+                    ChecklistItem(title: "Consider weighing anchor; getting underway", isChecked: false),
+                    ChecklistItem(title: "Consider outside maneuvering assistance [tugs, other vessels]", isChecked: false),
+                    ChecklistItem(title: "Sound danger signal (if applicable)", isChecked: false)
                 ]),
                 ChecklistSection(title: "Medium Priority", items: [
                     ChecklistItem(title: "Consider emergency or security broadcast (depending on conditions)", isChecked: false),
-                    ChecklistItem(title: "Close watertight doors, if applicable", isChecked: false),
+                    ChecklistItem(title: "Close watertight doors, if applicable", isChecked: false)
                 ]),
                 ChecklistSection(title: "Low Priority", items: [
                     ChecklistItem(title: "Contact CG / local authorities if warranted", isChecked: false)
@@ -482,19 +481,18 @@ public struct IncludedChecklists {
         ),
 
         ChecklistInfo(
-            title: "Mooring: Breakaway",
+            title: "Mooring: Breakaway from Berth",
             category: .emergency,
             sections: [
                 ChecklistSection(title: "High Priority", items: [
-                    ChecklistItem(title: "Take notes / start an audio recording", isChecked: false),
-                    ChecklistItem(title: "Stop external operations (tendering, cargo loading)", isChecked: false),
-                    ChecklistItem(title: "Retrieve or remove gangway(s)", isChecked: false),
-                    ChecklistItem(title: "Bring engine(s), thrusters online; get realistic ETA for propulsion", isChecked: false),
-                    ChecklistItem(title: "Bring steering online", isChecked: false),
-                    ChecklistItem(title: "Assess vessel set and drift", isChecked: false),
-                    ChecklistItem(title: "Calculate time to danger (shoals, other vessels); verify UKC", isChecked: false),
-                    ChecklistItem(title: "Consider outside maneuvering assistance [tugs, other vessels]: engines not readily available, high wind conditions may overwhelm engine capability even after online, traffic density is high", isChecked: false),
-                    ChecklistItem(title: "Consider dropping anchor: sufficient depth, engines not readily available, not in a cable area", isChecked: false),
+                    ChecklistItem(title: "Take notes / start an audio recording (when able)", isChecked: false),
+                    ChecklistItem(title: "Stop external operations (tendering, passenger, cargo loading)", isChecked: false),
+                    ChecklistItem(title: "Secure, retrieve or remove gangway(s)", isChecked: false),
+                    ChecklistItem(title: "Consider letting anchor(s) go immediately (be aware of cable areas, submarine pipelines, etc.)", isChecked: false),
+                    ChecklistItem(title: "Bring available maneuvering resources online: engine(s), thrusters, manual steering; get realistic ETA for propulsion", isChecked: false),
+                    ChecklistItem(title: "Consider outside assistance [tugs, other vessels]", isChecked: false),
+                    ChecklistItem(title: "Use availabl navigational resources: determine & log ship's position; assess set and drift; identify immediate threats (other vessels, nav hazards); verify UKC; maximize sea room using any available resources to direct vessel away from immediate dangers (grounding, traffic, etc)", isChecked: false),
+                    ChecklistItem(title: "Sound danger siganl (if applicable)", isChecked: false)
                 ]),
                 ChecklistSection(title: "Medium Priority", items: [
                     ChecklistItem(title: "Consider emergency or security broadcast (depending on conditions)", isChecked: false),

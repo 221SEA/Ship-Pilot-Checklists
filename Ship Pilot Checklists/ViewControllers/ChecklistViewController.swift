@@ -922,15 +922,21 @@ extension ChecklistViewController {
     }
     
     private func toggleItem(at indexPath: IndexPath) {
-        let now = DateFormatter.localizedString(from: Date(),
-                                                dateStyle: .none,
-                                                timeStyle: .short)
+        // Create a custom timestamp with local time and GMT offset
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "HHmm"
+        let localTime = dateFormatter.string(from: Date())
+        
+        // Get the GMT offset
+        let timezoneOffset = TimeZone.current.secondsFromGMT() / 3600
+        let timezonePrefix = timezoneOffset >= 0 ? "+" : ""
+        let formattedTimestamp = "\(localTime) (GMT \(timezonePrefix)\(timezoneOffset))"
         
         if var c = checklist {
             c.sections[indexPath.section].items[indexPath.row].isChecked.toggle()
             c.sections[indexPath.section].items[indexPath.row].timestamp =
             c.sections[indexPath.section].items[indexPath.row].isChecked
-            ? now
+            ? formattedTimestamp
             : nil
             checklist = c
         }
@@ -938,7 +944,7 @@ extension ChecklistViewController {
             c.sections[indexPath.section].items[indexPath.row].isChecked.toggle()
             c.sections[indexPath.section].items[indexPath.row].timestamp =
             c.sections[indexPath.section].items[indexPath.row].isChecked
-            ? now
+            ? formattedTimestamp
             : nil
             customChecklist = c
             CustomChecklistManager.shared.update(c)

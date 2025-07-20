@@ -246,7 +246,7 @@ class MainViewController: UIViewController {
     }
     
     @objc private func presentHelpViewController() {
-        let help = HelpViewController()
+        let help = ModernHelpViewController()
         applyUserInterfaceStyle(to: help)
         let nav = UINavigationController(rootViewController: help)
         applyUserInterfaceStyle(to: nav)
