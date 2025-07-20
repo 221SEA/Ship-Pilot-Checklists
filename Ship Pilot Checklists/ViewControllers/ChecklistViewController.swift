@@ -1104,8 +1104,8 @@ extension ChecklistViewController {
         guard let indexPath = pendingPhotoIndexPath else { return }
         
         let items = checklist?.sections[indexPath.section].items
-        ?? customChecklist?.sections[indexPath.section].items
-        ?? []
+                 ?? customChecklist?.sections[indexPath.section].items
+                 ?? []
         let currentPhotoCount = items[indexPath.row].photoFilenames.count
         let remainingSlots = 4 - currentPhotoCount
         
@@ -1115,18 +1115,98 @@ extension ChecklistViewController {
             return
         }
         
+        // Present action sheet with camera and photo library options
+        let actionSheet = UIAlertController(
+            title: "Add Photo",
+            message: "Choose a photo source",
+            preferredStyle: .actionSheet
+        )
+        
+        // Add camera option if available
+        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+            actionSheet.addAction(UIAlertAction(title: "Camera", style: .default) { _ in
+                self.openCamera()
+            })
+        }
+        
+        // Add photo library option
+        actionSheet.addAction(UIAlertAction(title: "Photo Library", style: .default) { _ in
+            self.openPhotoLibrary(selectionLimit: remainingSlots)
+        })
+        
+        // Add cancel option
+        actionSheet.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+            self.pendingPhotoIndexPath = nil
+        })
+        
+        // iPad compatibility
+        if let popover = actionSheet.popoverPresentationController {
+            if let cell = tableView.cellForRow(at: indexPath) as? ChecklistCell {
+                popover.sourceView = cell.cameraButton
+                popover.sourceRect = cell.cameraButton.bounds
+            } else {
+                popover.sourceView = view
+                popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
+        }
+        
+        present(actionSheet, animated: true)
+    }
+    // Method to open the camera
+    private func openCamera() {
+        let imagePicker = UIImagePickerController()
+        imagePicker.sourceType = .camera
+        imagePicker.delegate = self
+        imagePicker.allowsEditing = false
+        
+        // Customize camera UI
+        imagePicker.cameraCaptureMode = .photo
+        imagePicker.cameraDevice = .rear
+        imagePicker.cameraFlashMode = .auto
+        
+        present(imagePicker, animated: true)
+    }
+
+    // Method to open the photo library using PHPickerViewController
+    private func openPhotoLibrary(selectionLimit: Int) {
         // Use PHPickerViewController for multiple selection
         var configuration = PHPickerConfiguration(photoLibrary: .shared())
         configuration.filter = .images
-        configuration.selectionLimit = remainingSlots // Allow up to remaining slots
+        configuration.selectionLimit = selectionLimit // Allow up to remaining slots
         
         let picker = PHPickerViewController(configuration: configuration)
         picker.delegate = self
         present(picker, animated: true)
     }
     
-    
-    
+    // MARK: - UIImagePickerController Delegate Methods
+
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        picker.dismiss(animated: true)
+        
+        guard let indexPath = pendingPhotoIndexPath,
+              let image = info[.originalImage] as? UIImage else {
+            return
+        }
+        
+        // Save the captured image
+        saveImageToDocuments(image) { [weak self] filename in
+            guard let self = self, let filename = filename else { return }
+            
+            DispatchQueue.main.async {
+                self.addFilenameToItem(at: indexPath, filename: filename)
+                self.tableView.reloadRows(at: [indexPath], with: .automatic)
+                self.pendingPhotoIndexPath = nil
+            }
+        }
+    }
+
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true) {
+            self.pendingPhotoIndexPath = nil
+        }
+    }
     
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         picker.dismiss(animated: true)
@@ -1172,7 +1252,6 @@ extension ChecklistViewController {
                 }
             }
         }
-        
         // When all images are processed, update the UI
         group.notify(queue: .main) { [weak self] in
             guard let self = self else { return }
@@ -1189,6 +1268,32 @@ extension ChecklistViewController {
             print("Added \(savedFilenames.count) photos to checklist item")
         }
     }
+        
+        // Helper method to save an image to documents directory (used for camera photos)
+        private func saveImageToDocuments(_ image: UIImage, completion: @escaping (String?) -> Void) {
+            guard let jpegData = image.jpegData(compressionQuality: 0.8),
+                  let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                completion(nil)
+                return
+            }
+            
+            // Create a unique filename
+            let filename = "\(UUID().uuidString).jpg"
+            let fileURL = documentsURL.appendingPathComponent(filename)
+            
+            // Save asynchronously
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    try jpegData.write(to: fileURL)
+                    print("Successfully saved photo: \(filename)")
+                    completion(filename)
+                } catch {
+                    print("Error saving photo: \(error)")
+                    completion(nil)
+                }
+            }
+        }
+        
     private func saveBuiltInChecklistState() {
         // Save the state of built-in checklists to UserDefaults
         guard let checklist = self.checklist else { return }
@@ -1279,14 +1384,21 @@ extension ChecklistViewController {
                 try session.setCategory(.playAndRecord, mode: .default)
                 try session.setActive(true)
                 
-                // Create filename with checklist name and timestamp
+                // Create filename with new format: Checklistname_Date_VesselName_AudioRecording.m4a
                 let checklistName = (self.checklist?.title ?? self.customChecklist?.title ?? "Checklist")
                     .replacingOccurrences(of: "/", with: "-")
                     .replacingOccurrences(of: " ", with: "_")
+                
+                // Get the current date in YYYYMMDD format
                 let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "yyyyMMdd_HHmmss"
-                let timestamp = dateFormatter.string(from: Date())
-                let filename = "\(checklistName)_VoiceMemo_\(timestamp).m4a"
+                dateFormatter.dateFormat = "yyyyMMdd"
+                let dateStr = dateFormatter.string(from: Date())
+                
+                // Get vessel name or use "Unknown"
+                // We'll prompt for vessel name after recording is finished
+                
+                // Create filename
+                let filename = "\(checklistName)_\(dateStr)_Unknown_AudioRecording.m4a"
                 
                 let fileURL = FileManager.default
                     .urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -1313,7 +1425,7 @@ extension ChecklistViewController {
                 }
                 
                 // Auto-dismiss the alert after 2 seconds
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
                     if self.presentedViewController is UIAlertController {
                         self.dismiss(animated: true)
                     }
@@ -1325,7 +1437,7 @@ extension ChecklistViewController {
             }
         }
     }
-    
+
     private func finishRecording() {
         audioRecorder?.stop()
         recordingTimer?.invalidate()
@@ -1334,17 +1446,73 @@ extension ChecklistViewController {
         title = checklist?.title ?? customChecklist?.title ?? "Checklist"
         
         // No need to dismiss alert since it auto-dismisses
-        showSaveLocationInfo()
+        promptForVesselNameForRecording()
     }
-    
-    private func showSaveLocationInfo() {
+
+    // Update this method to auto-save without document picker
+    private func promptForVesselNameForRecording() {
         guard let url = audioRecorder?.url else { return }
         
-        // Skip the alert entirely and go straight to sharing
-        let picker = UIDocumentPickerViewController(forExporting: [url])
-        picker.shouldShowFileExtensions = true
-        picker.delegate = self  // Add this to detect when user cancels
-        present(picker, animated: true)
+        let alert = UIAlertController(
+            title: "Name the Vessel",
+            message: "What vessel are you on? This will be included in the recording name.",
+            preferredStyle: .alert
+        )
+        
+        alert.addTextField { textField in
+            textField.placeholder = "Vessel Name"
+            textField.autocapitalizationType = .words
+        }
+        
+        alert.addAction(UIAlertAction(title: "Skip", style: .cancel) { _ in
+            // Use "Unknown" as vessel name
+            self.saveAudioRecording(url: url, vesselName: "Unknown")
+        })
+        
+        alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in
+            let vesselName = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespaces) ?? "Unknown"
+            let vesselNameSafe = vesselName.isEmpty ? "Unknown" : vesselName.replacingOccurrences(of: " ", with: "_")
+            self.saveAudioRecording(url: url, vesselName: vesselNameSafe)
+        })
+        
+        present(alert, animated: true)
+    }
+
+    // New method to save audio recording directly to Documents
+    private func saveAudioRecording(url: URL, vesselName: String) {
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        
+        // Create filename with proper format: Checklistname_Date_VesselName.m4a
+        let checklistName = (self.checklist?.title ?? self.customChecklist?.title ?? "Checklist")
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: " ", with: "_")
+        
+        // Get the current date in YYYYMMDD format
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyyMMdd"
+        let dateStr = dateFormatter.string(from: Date())
+        
+        let fileName = "\(checklistName)_\(dateStr)_\(vesselName).m4a"
+        let destinationURL = documentsURL.appendingPathComponent(fileName)
+        
+        // Copy the file to Documents
+        do {
+            // Remove any existing file with the same name
+            if FileManager.default.fileExists(atPath: destinationURL.path) {
+                try FileManager.default.removeItem(at: destinationURL)
+            }
+            
+            // Copy the file
+            try FileManager.default.copyItem(at: url, to: destinationURL)
+            
+            // Show success message with sharing option
+            showSaveSuccessAlert(for: destinationURL, fileType: "Audio recording")
+            
+            print("Successfully saved audio recording: \(fileName)")
+        } catch {
+            print("Error saving audio: \(error)")
+            showAlert(title: "Save Failed", message: "Could not save the audio recording: \(error.localizedDescription)")
+        }
     }
     
     
@@ -1722,15 +1890,24 @@ extension ChecklistViewController {
         }
     }
 
-    private func actuallyGeneratePDF() {
+    @objc private func actuallyGeneratePDF() {
         guard let vesselName = pendingVesselName else { return }
         
-        // Build filename
-        let dateFmt = DateFormatter(); dateFmt.dateFormat = "M.d.yy"
+        // Build filename with new convention: Checklistname_Date_VesselName.pdf
+        let dateFmt = DateFormatter()
+        dateFmt.dateFormat = "yyyyMMdd"
         let dateStr = dateFmt.string(from: Date())
+        
         let rawTitle = checklist?.title ?? customChecklist?.title ?? "Checklist"
-        let safeTitle = rawTitle.replacingOccurrences(of: "/", with: ".")
-        let fileName = "ShipPilotChecklist_\(safeTitle)_\(dateStr).pdf"
+        let safeTitle = rawTitle.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: " ", with: "_")
+        let safeVesselName = vesselName.replacingOccurrences(of: " ", with: "_")
+        let fileName = "\(safeTitle)_\(dateStr)_\(safeVesselName).pdf"
+        
+        // Final destination in Documents folder
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let destinationURL = documentsURL.appendingPathComponent(fileName)
+        
+        // Temporary URL for generation
         let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         
         // Constants
@@ -1800,13 +1977,36 @@ extension ChecklistViewController {
                 )
             }
             
+            // Save PDF to Documents directory
+            if FileManager.default.fileExists(atPath: destinationURL.path) {
+                try FileManager.default.removeItem(at: destinationURL)
+            }
+            try FileManager.default.copyItem(at: tmpURL, to: destinationURL)
+            
             // Clean up stored signatures
             pilotSignatureImage = nil
             captainSignatureImage = nil
             pendingVesselName = nil
             
-            // Present share sheet
-            let ac = UIActivityViewController(activityItems: [tmpURL], applicationActivities: nil)
+            // Show success message with sharing option
+            showSaveSuccessAlert(for: destinationURL, fileType: "PDF")
+            
+        } catch {
+            showAlert(title: "PDF Error", message: error.localizedDescription)
+        }
+    }
+    private func showSaveSuccessAlert(for fileURL: URL, fileType: String) {
+        let alert = UIAlertController(
+            title: "File Saved",
+            message: "\(fileType) has been saved successfully. You can find it in the Saved Files section.",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        
+        alert.addAction(UIAlertAction(title: "Share", style: .default) { _ in
+            // Present share sheet for the file
+            let ac = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
             
             // iPad-specific fix: Set popover source for iPad compatibility
             if let popover = ac.popoverPresentationController {
@@ -1815,11 +2015,10 @@ extension ChecklistViewController {
                 popover.permittedArrowDirections = []
             }
             
-            present(ac, animated: true)
-            
-        } catch {
-            showAlert(title: "PDF Error", message: error.localizedDescription)
-        }
+            self.present(ac, animated: true)
+        })
+        
+        present(alert, animated: true)
     }
     
     // MARK: — PDF Helpers
@@ -2369,17 +2568,3 @@ extension ChecklistViewController {
         }
     }
 }
-        // MARK: - UIDocumentPickerDelegate
-extension ChecklistViewController {
-            func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-                // User successfully exported the file
-                showAlert(title: "Success", message: "Voice memo saved.")
-            }
-            
-            func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
-                // User cancelled - the recording is lost since we can't access it in-app
-                showAlert(title: "Recording Not Saved", message: "The voice memo was not exported and cannot be recovered.")
-            }
-            
-        }
-    
