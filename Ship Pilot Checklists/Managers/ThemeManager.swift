@@ -66,23 +66,23 @@ struct ThemeManager {
     static func applyToolbarAppearance(_ toolbar: UIToolbar, trait: UITraitCollection) {
         let bgColor = navBarColor(for: trait)
         let fgColor = navBarForegroundColor(for: trait)
-
+        
         toolbar.barTintColor = bgColor
         toolbar.tintColor = fgColor
         toolbar.isTranslucent = false
         toolbar.backgroundColor = bgColor
-
+        
         if #available(iOS 13.0, *) {
             let appearance = UIToolbarAppearance()
             appearance.configureWithOpaqueBackground()
             appearance.backgroundColor = bgColor
             appearance.shadowColor = .clear
-
+            
             // Set button title text color (fixes "dull white" issue)
             appearance.buttonAppearance.normal.titleTextAttributes = [.foregroundColor: fgColor]
-
+            
             toolbar.standardAppearance = appearance
-
+            
             if #available(iOS 15.0, *) {
                 toolbar.scrollEdgeAppearance = appearance
             }
