@@ -567,7 +567,7 @@ struct HelpContent {
                    • Column B: Item
                 
                 2. Add rows for individual items with this format:
-                   • Priority value: This is where you can use any category you want (High Priority, Initial, Pre-departure, etc.)
+                   • Priority value: This is where you can use any category you want (Initial Actions, Communications, Damage Control, Post Incident, etc.)
                    • Item value: The checklist item text (Sound General Alarm, etc.)
                 
                 3. Save as .csv format from Excel or Numbers (NOT UTF-8 CSV)
