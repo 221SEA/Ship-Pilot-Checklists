@@ -564,13 +564,12 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
             return
         }
         
-        // Check if there are emergency contacts in the new system
+        // Check if there are ANY contacts available
         let categories = ContactsManager.shared.loadCategories()
-        let emergencyCategory = categories.first(where: { $0.name == "Emergency" })
-        let emergencyContacts = emergencyCategory?.contacts ?? []
-        
-        guard !emergencyContacts.isEmpty else {
-            showEmergencyContactsMissingAlert()
+        let totalContacts = categories.reduce(0) { $0 + $1.contacts.count }
+
+        guard totalContacts > 0 else {
+            showNoContactsAlert()
             return
         }
         
@@ -624,10 +623,10 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
         present(alert, animated: true)
     }
 
-    private func showEmergencyContactsMissingAlert() {
+    private func showNoContactsAlert() {
         let alert = UIAlertController(
-            title: "No Emergency Contacts",
-            message: "Emergency contacts are required for SMS messages. Would you like to add them now?",
+            title: "No Contacts Available",
+            message: "You need to add contacts before sending emergency messages. Would you like to add them now?",
             preferredStyle: .alert
         )
         
@@ -682,24 +681,18 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
         }
     }
     private func proceedWithEmergencyContacts() {
-        // Load emergency contacts from the new Contacts system
+        // Load ALL contacts from all categories
         let categories = ContactsManager.shared.loadCategories()
+        let allOperationalContacts = categories.flatMap { $0.contacts }
+        
+        // Convert emergency category contacts to legacy format for compatibility
         let emergencyCategory = categories.first(where: { $0.name == "Emergency" })
-        let operationalContacts = emergencyCategory?.contacts ?? []
-        
-        // Convert to EmergencyContact format for backward compatibility
-        let emergencyContacts = operationalContacts.map {
+        let emergencyContacts = emergencyCategory?.contacts.map {
             EmergencyContact(name: $0.name, phone: $0.phone)
-        }
-        
-        guard !emergencyContacts.isEmpty else {
-            showAlert(title: "No Emergency Contacts",
-                      message: "Please add emergency contacts in Contacts > Emergency category first.")
-            return
-        }
+        } ?? []
         
         let picker = ContactSelectionViewController(style: .insetGrouped)
-        picker.emergencyContacts = emergencyContacts  // Use the correct property name
+        picker.emergencyContacts = emergencyContacts  // Emergency category contacts
         picker.delegate = self
         let nav = UINavigationController(rootViewController: picker)
         nav.modalPresentationStyle = .formSheet

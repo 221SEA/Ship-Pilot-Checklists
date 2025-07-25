@@ -176,15 +176,32 @@ class ContactEditorViewController: UIViewController, CNContactPickerDelegate {
     private func loadContactData() {
         guard case .edit(let existingContact, _) = mode else { return }
         
-        // Contact will be loaded when cells are created
         contact = existingContact
+        
+        // For edit mode, enable save button initially since we have valid data
+        DispatchQueue.main.async {
+            self.updateSaveButtonState()
+        }
     }
     
     private func updateSaveButtonState() {
         let hasName = !(nameField?.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         let hasPhone = !(phoneField?.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         
-        navigationItem.rightBarButtonItem?.isEnabled = hasName && hasPhone
+        // For edit mode, if we have valid existing data, enable save button
+        // For add mode, require both name and phone to be filled
+        let shouldEnable: Bool
+        
+        switch mode {
+        case .add:
+            shouldEnable = hasName && hasPhone
+        case .edit:
+            // For editing, we know the contact already has valid data
+            // So save should be enabled as long as required fields aren't empty
+            shouldEnable = hasName && hasPhone
+        }
+        
+        navigationItem.rightBarButtonItem?.isEnabled = shouldEnable
     }
     
     // MARK: - Actions

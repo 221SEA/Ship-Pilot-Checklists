@@ -2,97 +2,133 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
-	<key>NSCameraUsageDescription</key>
-	<string>The app needs to use your camera to attach photos to checklist items. Four photos per item.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>The app needs access to your photo library to choose an existing photo.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>The app needs to access your location so that we can add GPS coordinates, closest tide and wind info to your Notes and Emergency Text.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>The app needs your permission to record audio when you create a voice note.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>The app needs access to your photo library so you can attach an existing photo to your checklist item.</string>
-	<key>NSContactsUsageDescription</key>
-	<string>The app needs access to your contacts to quickly import contact information for emergency and operational use.</string>
-	<key>UIApplicationSceneManifest</key>
-	<dict>
-		<key>UIApplicationSupportsMultipleScenes</key>
-		<false/>
-		<key>UISceneConfigurations</key>
-		<dict>
-			<key>UIWindowSceneSessionRoleApplication</key>
-			<array>
-				<dict>
-					<key>UISceneConfigurationName</key>
-					<string>Default Configuration</string>
-					<key>UISceneDelegateClassName</key>
-					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
-				</dict>
-			</array>
-		</dict>
-	</dict>
-	<key>CFBundleDocumentTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeName</key>
-			<string>Ship Pilot Checklist</string>
-			<key>CFBundleTypeIconFiles</key>
-			<array/>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>com.JillRussell.Ship-Pilot-Checklists.shipchecklist</string>
-                <string>public.json</string>
-			</array>
-			<key>LSHandlerRank</key>
-			<string>Owner</string>
-		</dict>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+    <key>NSCameraUsageDescription</key>
+    <string>The app needs to use your camera to attach photos to checklist items. Four photos per item.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>The app needs access to your photo library to choose an existing photo.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>The app needs to access your location so that we can add GPS coordinates, closest tide and wind info to your Notes and Emergency Text.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>The app needs your permission to record audio when you create a voice note.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>The app needs access to your photo library so you can attach an existing photo to your checklist item.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>The app needs access to your contacts to quickly import contact information for emergency and operational use.</string>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+        <key>UISceneConfigurations</key>
+        <dict>
+            <key>UIWindowSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>Default Configuration</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
+    <key>CFBundleDocumentTypes</key>
+    <array>
         <dict>
             <key>CFBundleTypeName</key>
-            <string>CSV Checklist</string>
+            <string>Ship Pilot Checklist</string>
+            <key>CFBundleTypeIconFiles</key>
+            <array/>
             <key>LSItemContentTypes</key>
             <array>
-                <string>public.comma-separated-values-text</string>
+                <string>com.JillRussell.Ship-Pilot-Checklists.shipchecklist</string>
+                <string>public.json</string>
             </array>
             <key>LSHandlerRank</key>
             <string>Owner</string>
         </dict>
-	</array>
-	<key>UTExportedTypeDeclarations</key>
-	<array>
-		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>com.JillRussell.Ship-Pilot-Checklists.shipchecklist</string>
-			<key>UTTypeReferenceURL</key>
-			<string>https://example.com/shipchecklist</string>
-			<key>UTTypeDescription</key>
-			<string>Ship Pilot Checklist</string>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>public.data</string>
-				<string>public.content</string>
-			</array>
-			<key>UTTypeTagSpecification</key>
-			<dict>
-				<key>public.filename-extension</key>
-				<array>
-					<string>shipchecklist</string>
-				</array>
-				<key>public.mime-type</key>
-				<array>
-					<string>application/x-shipchecklist</string>
-				</array>
-			</dict>
-		</dict>
-	</array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Ship Pilot Contacts</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.JillRussell.Ship-Pilot-Checklists.shipcontacts</string>
+            </array>
+        </dict>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>CSV File</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.comma-separated-values-text</string>
+            </array>
+        </dict>
+    </array>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.JillRussell.Ship-Pilot-Checklists.shipchecklist</string>
+            <key>UTTypeReferenceURL</key>
+            <string>https://example.com/shipchecklist</string>
+            <key>UTTypeDescription</key>
+            <string>Ship Pilot Checklist</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+                <string>public.content</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>shipchecklist</string>
+                </array>
+                <key>public.mime-type</key>
+                <array>
+                    <string>application/x-shipchecklist</string>
+                </array>
+            </dict>
+        </dict>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.JillRussell.Ship-Pilot-Checklists.shipcontacts</string>
+            <key>UTTypeDescription</key>
+            <string>Ship Pilot Contacts</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+                <string>public.content</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>shipcontacts</string>
+                </array>
+                <key>public.mime-type</key>
+                <array>
+                    <string>application/x-shipcontacts</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
     <key>UTImportedTypeDeclarations</key>
     <array>
         <dict>
             <key>UTTypeIdentifier</key>
             <string>public.comma-separated-values-text</string>
             <key>UTTypeDescription</key>
-            <string>CSV Checklist File</string>
+            <string>CSV File</string>
             <key>UTTypeConformsTo</key>
             <array>
                 <string>public.text</string>

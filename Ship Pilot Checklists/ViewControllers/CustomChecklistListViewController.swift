@@ -143,10 +143,15 @@ class CustomChecklistListViewController: UIViewController,
         editorVC.checklist = newChecklist
         navigationController?.pushViewController(editorVC, animated: true)
     }
+    
     @objc private func importCSVButtonTapped() {
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.commaSeparatedText], asCopy: true)
         picker.delegate = self
         picker.allowsMultipleSelection = false
+        
+        // IMPORTANT: Force the document picker to match your app's night mode setting
+        picker.overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
+        
         present(picker, animated: true)
     }
     

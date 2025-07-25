@@ -29,9 +29,16 @@ class CategoryPickerViewController: UIViewController {
         setupUI()
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Apply navigation bar theme when view appears
+        updateNavigationBarTheme()
+    }
+    
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         updateTheme()
+        updateNavigationBarTheme()
     }
     
     // MARK: - Setup
@@ -45,6 +52,7 @@ class CategoryPickerViewController: UIViewController {
         setupNavigationBar()
         setupTableView()
         updateTheme()
+        updateNavigationBarTheme()
     }
     
     private func setupNavigationBar() {
@@ -73,7 +81,18 @@ class CategoryPickerViewController: UIViewController {
     private func updateTheme() {
         view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
         tableView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
-        navigationItem.leftBarButtonItem?.tintColor = ThemeManager.titleColor(for: traitCollection)
+        
+        // Update navigation bar button color
+        let tintColor = ThemeManager.navBarForegroundColor(for: traitCollection)
+        navigationItem.leftBarButtonItem?.tintColor = tintColor
+        
+        // Reload table to update cell colors
+        tableView.reloadData()
+    }
+    
+    private func updateNavigationBarTheme() {
+        guard let navigationController = navigationController else { return }
+        ThemeManager.apply(to: navigationController, traitCollection: traitCollection)
     }
     
     // MARK: - Actions
@@ -96,17 +115,35 @@ extension CategoryPickerViewController: UITableViewDataSource {
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
         let category = categories[indexPath.row]
         
+        // Set up cell style to support detail text
         cell.textLabel?.text = category.name
         cell.textLabel?.textColor = ThemeManager.titleColor(for: traitCollection)
+        
+        // Set cell background color
+        cell.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
         
         // Show contact count
         let count = category.contacts.count
         if count > 0 {
-            cell.detailTextLabel?.text = "\(count) contact\(count == 1 ? "" : "s")"
+            // Create a secondary label for the count since detailTextLabel might not work in all styles
+            if cell.detailTextLabel != nil {
+                cell.detailTextLabel?.text = "\(count) contact\(count == 1 ? "" : "s")"
+                cell.detailTextLabel?.textColor = .secondaryLabel
+            } else {
+                // If no detailTextLabel, add count to main text
+                cell.textLabel?.text = "\(category.name) (\(count) contact\(count == 1 ? "" : "s"))"
+            }
+        } else {
+            if cell.detailTextLabel != nil {
+                cell.detailTextLabel?.text = "No contacts"
+                cell.detailTextLabel?.textColor = .secondaryLabel
+            } else {
+                cell.textLabel?.text = "\(category.name) (No contacts)"
+            }
         }
         
-        // Show indicator if system category
-        // No lock icons needed
+        // Set selection style
+        cell.selectionStyle = .default
         cell.accessoryType = .none
         
         return cell

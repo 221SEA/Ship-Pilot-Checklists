@@ -58,14 +58,91 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         case "shipchecklist":
             importChecklist(from: url)
         case "csv":
-            importChecklistFromCSV(url: url)
+            // Enhanced: Handle both checklist and contact CSVs
+            handleCSVImport(from: url)
         case "shipcontacts":
-            importContacts(from: url)
+            // Enhanced: Better feedback and error handling
+            importContactsFromShipContactsFile(from: url)
         default:
             break
         }
     }
-    private func importContacts(from url: URL) {
+    
+    // MARK: - Enhanced CSV Handling
+    private func handleCSVImport(from url: URL) {
+        do {
+            let content = try String(contentsOf: url)
+            let firstLine = content.components(separatedBy: .newlines).first ?? ""
+            
+            // Check if it looks like a checklist CSV (Priority,Item) or contacts CSV
+            if firstLine.lowercased().contains("priority") && firstLine.lowercased().contains("item") {
+                // It's a checklist CSV
+                importChecklistFromCSV(url: url)
+            } else if isContactsCSV(firstLine: firstLine) {
+                // It's a contacts CSV
+                importContactsFromCSV(from: url)
+            } else {
+                // Ask the user what type it is
+                DispatchQueue.main.async {
+                    self.showCSVTypeSelectionAlert(for: url)
+                }
+            }
+        } catch {
+            DispatchQueue.main.async {
+                self.showImportError(error: error)
+            }
+        }
+    }
+
+    private func isContactsCSV(firstLine: String) -> Bool {
+        let lowercased = firstLine.lowercased()
+        
+        // Expanded list of contact-related field indicators
+        let contactFields = [
+            // Name variations
+            "name", "contact name", "full name", "contact", "person",
+            // Phone variations
+            "phone", "mobile", "cell", "telephone", "tel", "phone number",
+            // Communication
+            "email", "e-mail", "mail",
+            // Organization
+            "organization", "company", "org", "employer", "business",
+            // Role/Position
+            "role", "title", "job title", "position", "rank",
+            // Maritime specific
+            "vhf", "call sign", "callsign", "port", "harbor"
+        ]
+        
+        let foundFields = contactFields.filter { lowercased.contains($0) }
+        return foundFields.count >= 2 // If we find at least 2 contact-related fields
+    }
+
+    private func showCSVTypeSelectionAlert(for url: URL) {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootVC = window.rootViewController else { return }
+        
+        let alert = UIAlertController(
+            title: "Import CSV",
+            message: "What type of CSV file is this?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Checklist", style: .default) { _ in
+            self.importChecklistFromCSV(url: url)
+        })
+        
+        alert.addAction(UIAlertAction(title: "Contacts", style: .default) { _ in
+            self.importContactsFromCSV(from: url)
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        rootVC.present(alert, animated: true)
+    }
+    
+    // MARK: - Enhanced Ship Contacts File Import
+    private func importContactsFromShipContactsFile(from url: URL) {
         do {
             let data = try Data(contentsOf: url)
             let decoder = JSONDecoder()
@@ -82,9 +159,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             ContactsManager.shared.saveCategories(allCategories)
 
             DispatchQueue.main.async {
+                let contactCount = prefixedCategories.reduce(0) { $0 + $1.contacts.count }
+                let categoryCount = prefixedCategories.count
+                
+                let message = contactCount == 1
+                    ? "1 contact imported in \(categoryCount) category."
+                    : "\(contactCount) contacts imported in \(categoryCount) \(categoryCount == 1 ? "category" : "categories")."
+                
                 let alert = UIAlertController(
-                    title: "Contacts Imported",
-                    message: "Contact list successfully imported.",
+                    title: "Contacts Imported Successfully",
+                    message: message,
                     preferredStyle: .alert
                 )
                 alert.addAction(UIAlertAction(title: "OK", style: .default))
@@ -95,7 +179,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             DispatchQueue.main.async {
                 let alert = UIAlertController(
                     title: "Import Failed",
-                    message: "Unable to read contact data: \(error.localizedDescription)",
+                    message: "Unable to read contacts file: \(error.localizedDescription)",
                     preferredStyle: .alert
                 )
                 alert.addAction(UIAlertAction(title: "OK", style: .default))
@@ -103,6 +187,162 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             }
         }
     }
+    
+    // MARK: - NEW: CSV Contacts Import
+    private func importContactsFromCSV(from url: URL) {
+        do {
+            let content = try String(contentsOf: url)
+            var rows = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+
+            guard let header = rows.first else {
+                throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "CSV is empty."])
+            }
+
+            // Parse header to understand the CSV structure
+            let headers = header.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            
+            // Find column indices for different fields - Enhanced recognition
+            let nameIndex = findColumnIndex(in: headers, possibleNames: [
+                "name", "contact name", "full name", "contact", "person", "individual"
+            ])
+            
+            let phoneIndex = findColumnIndex(in: headers, possibleNames: [
+                "phone", "phone number", "telephone", "mobile", "mobile phone",
+                "cell", "cell phone", "cellular", "office phone", "work phone",
+                "business phone", "primary phone", "main phone", "tel", "phone#"
+            ])
+            
+            let emailIndex = findColumnIndex(in: headers, possibleNames: [
+                "email", "email address", "e-mail", "e mail", "electronic mail",
+                "mail", "email addr", "work email", "business email"
+            ])
+            
+            let organizationIndex = findColumnIndex(in: headers, possibleNames: [
+                "organization", "company", "org", "employer", "business",
+                "corporation", "agency", "department", "firm", "workplace"
+            ])
+            
+            let roleIndex = findColumnIndex(in: headers, possibleNames: [
+                "role", "title", "job title", "position", "job", "occupation",
+                "rank", "designation", "job position", "work title"
+            ])
+            
+            let vhfIndex = findColumnIndex(in: headers, possibleNames: [
+                "vhf", "vhf channel", "radio", "channel", "radio channel",
+                "vhf radio", "marine radio", "ship radio", "comm channel"
+            ])
+            
+            let callSignIndex = findColumnIndex(in: headers, possibleNames: [
+                "call sign", "callsign", "call_sign", "radio call sign",
+                "vessel call sign", "ship call sign", "call letters"
+            ])
+            
+            let portIndex = findColumnIndex(in: headers, possibleNames: [
+                "port", "location", "port/location", "base port", "home port",
+                "harbor", "marina", "terminal", "facility", "base"
+            ])
+            
+            let notesIndex = findColumnIndex(in: headers, possibleNames: [
+                "notes", "comments", "remarks", "additional info", "memo",
+                "description", "details", "other", "misc", "miscellaneous"
+            ])
+
+            guard let nameIdx = nameIndex, let phoneIdx = phoneIndex else {
+                throw NSError(domain: "", code: 0, userInfo: [
+                    NSLocalizedDescriptionKey: "CSV must contain 'Name' and 'Phone' columns.\n\nFound columns: \(headers.joined(separator: ", "))"
+                ])
+            }
+
+            // Parse data rows
+            rows.removeFirst() // Remove header
+            var contacts: [OperationalContact] = []
+
+            for (rowNum, row) in rows.enumerated() {
+                let columns = parseCSVRow(row)
+                
+                guard columns.count > max(nameIdx, phoneIdx) else {
+                    print("Row \(rowNum + 2) has insufficient columns, skipping")
+                    continue
+                }
+                
+                let name = columns[nameIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                let phone = columns[phoneIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                guard !name.isEmpty && !phone.isEmpty else {
+                    print("Row \(rowNum + 2) missing required name or phone, skipping")
+                    continue
+                }
+
+                var contact = OperationalContact(name: name, phone: phone)
+                
+                // Add optional fields if available
+                if let emailIdx = emailIndex, emailIdx < columns.count {
+                    let email = columns[emailIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                    contact.email = email.isEmpty ? nil : email
+                }
+                if let orgIdx = organizationIndex, orgIdx < columns.count {
+                    let org = columns[orgIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                    contact.organization = org.isEmpty ? nil : org
+                }
+                if let roleIdx = roleIndex, roleIdx < columns.count {
+                    let role = columns[roleIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                    contact.role = role.isEmpty ? nil : role
+                }
+                if let vhfIdx = vhfIndex, vhfIdx < columns.count {
+                    let vhf = columns[vhfIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                    contact.vhfChannel = vhf.isEmpty ? nil : vhf
+                }
+                if let callIdx = callSignIndex, callIdx < columns.count {
+                    let callSign = columns[callIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                    contact.callSign = callSign.isEmpty ? nil : callSign
+                }
+                if let portIdx = portIndex, portIdx < columns.count {
+                    let port = columns[portIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                    contact.port = port.isEmpty ? nil : port
+                }
+                if let notesIdx = notesIndex, notesIdx < columns.count {
+                    let notes = columns[notesIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                    contact.notes = notes.isEmpty ? nil : notes
+                }
+
+                contacts.append(contact)
+            }
+
+            guard !contacts.isEmpty else {
+                throw NSError(domain: "", code: 0, userInfo: [
+                    NSLocalizedDescriptionKey: "No valid contacts found in CSV file."
+                ])
+            }
+
+            // Add contacts to "Imported" category
+            let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
+            let categoryName = "Imported CSV (\(timestamp))"
+            
+            var categories = ContactsManager.shared.loadCategories()
+            ContactsManager.shared.addCategory(name: categoryName, contacts: contacts, to: &categories)
+
+            DispatchQueue.main.async {
+                let message = contacts.count == 1
+                    ? "1 contact imported from CSV."
+                    : "\(contacts.count) contacts imported from CSV."
+                
+                let alert = UIAlertController(
+                    title: "CSV Import Successful",
+                    message: message,
+                    preferredStyle: .alert
+                )
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true)
+            }
+
+        } catch {
+            DispatchQueue.main.async {
+                self.showImportError(error: error)
+            }
+        }
+    }
+    
+    // MARK: - Existing Methods (unchanged)
     private func importChecklist(from url: URL) {
         do {
             // Read the file data
@@ -126,6 +366,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             }
         }
     }
+    
     func importChecklistFromCSV(url: URL) {
         do {
             let content = try String(contentsOf: url)
@@ -222,14 +463,65 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         
         let alert = UIAlertController(
             title: "Import Failed",
-            message: "Could not import checklist: \(error.localizedDescription)",
+            message: "Could not import: \(error.localizedDescription)",
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         rootVC.present(alert, animated: true)
     }
     
+    // MARK: - Enhanced Helper Functions
+    private func findColumnIndex(in headers: [String], possibleNames: [String]) -> Int? {
+        // First, try exact matches
+        for name in possibleNames {
+            if let index = headers.firstIndex(of: name) {
+                print("Found exact match for '\(name)' at column \(index)")
+                return index
+            }
+        }
+        
+        // If no exact match, try partial matches (helpful for variations)
+        for (headerIndex, header) in headers.enumerated() {
+            for name in possibleNames {
+                if header.contains(name) {
+                    print("Found partial match: '\(header)' contains '\(name)' at column \(headerIndex)")
+                    return headerIndex
+                }
+            }
+        }
+        
+        return nil
+    }
+
+    private func parseCSVRow(_ row: String) -> [String] {
+        // Simple CSV parser that handles quoted fields
+        var columns: [String] = []
+        var currentColumn = ""
+        var insideQuotes = false
+        var i = row.startIndex
+        
+        while i < row.endIndex {
+            let char = row[i]
+            
+            if char == "\"" {
+                insideQuotes.toggle()
+            } else if char == "," && !insideQuotes {
+                columns.append(currentColumn)
+                currentColumn = ""
+            } else {
+                currentColumn.append(char)
+            }
+            
+            i = row.index(after: i)
+        }
+        
+        // Don't forget the last column
+        columns.append(currentColumn)
+        
+        return columns
+    }
     
+    // MARK: - Scene Lifecycle
     func sceneDidDisconnect(_ scene: UIScene) { }
     func sceneDidBecomeActive(_ scene: UIScene) { }
     func sceneWillResignActive(_ scene: UIScene) { }
@@ -237,5 +529,4 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneDidEnterBackground(_ scene: UIScene) {
         (UIApplication.shared.delegate as? AppDelegate)?.saveContext()
     }
-    
 }

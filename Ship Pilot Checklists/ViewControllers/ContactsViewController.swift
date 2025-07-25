@@ -298,10 +298,20 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
             let editor = ContactEditorViewController(mode: .add(categoryIndex: categoryIndex))
             editor.delegate = self
             let nav = UINavigationController(rootViewController: editor)
+            
+            // Apply theme to the navigation controller
+            nav.overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
+            ThemeManager.apply(to: nav, traitCollection: nav.traitCollection)
+            
             self.present(nav, animated: true)
         }
         
         let nav = UINavigationController(rootViewController: categoryPicker)
+        
+        // Apply theme to the navigation controller
+        nav.overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
+        ThemeManager.apply(to: nav, traitCollection: nav.traitCollection)
+        
         present(nav, animated: true)
     }
     func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
@@ -350,36 +360,28 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
             CNContactOrganizationNameKey,
             CNContactJobTitleKey
         ]
+        picker.overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
 
         present(picker, animated: true)
     }
     @objc private func exportAllContactsTapped() {
-        let alert = UIAlertController(
-            title: "Export Contacts",
-            message: "Choose what to export:",
-            preferredStyle: .actionSheet
-        )
-
-        alert.addAction(UIAlertAction(title: "All Categories", style: .default) { [weak self] _ in
-            self?.export(categories: self?.categories ?? [], suggestedFileName: "contacts_all.shipcontacts")
-        })
-
-        for category in categories {
-            alert.addAction(UIAlertAction(title: category.name, style: .default) { [weak self] _ in
-                self?.export(categories: [category], suggestedFileName: "contacts_\(category.name.replacingOccurrences(of: " ", with: "_")).shipcontacts")
-            })
+        let multiSelectVC = MultiCategorySelectionViewController(categories: categories) { [weak self] selectedCategories in
+            guard let self = self else { return }
+            
+            let fileName = selectedCategories.count == self.categories.count ?
+                "contacts_all.shipcontacts" :
+                "contacts_selected.shipcontacts"
+                
+            self.export(categories: selectedCategories, suggestedFileName: fileName)
         }
-
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-
-        // iPad popover fix
-        if let popover = alert.popoverPresentationController {
-            popover.sourceView = view
-            popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.maxY - 100, width: 0, height: 0)
-            popover.permittedArrowDirections = []
-        }
-
-        present(alert, animated: true)
+        
+        let nav = UINavigationController(rootViewController: multiSelectVC)
+        
+        // Apply theme to the navigation controller
+        nav.overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
+        ThemeManager.apply(to: nav, traitCollection: nav.traitCollection)
+        
+        present(nav, animated: true)
     }
     private func export(categories: [ContactCategory], suggestedFileName: String) {
         let encoder = JSONEncoder()
@@ -771,4 +773,146 @@ extension ContactsViewController: ContactEditorDelegate {
             }
             tableView.reloadData()
         }
+    // MARK: - Multi-Category Selection View Controller
+
+    class MultiCategorySelectionViewController: UITableViewController {
+        
+        private let categories: [ContactCategory]
+        private var selectedIndices = Set<Int>()
+        private let completion: ([ContactCategory]) -> Void
+        
+        init(categories: [ContactCategory], completion: @escaping ([ContactCategory]) -> Void) {
+            self.categories = categories
+            self.completion = completion
+            super.init(style: .insetGrouped)
+        }
+        
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+        
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            
+            // Force theme support
+            overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
+            
+            title = "Select Categories to Export"
+            
+            // Apply theme colors
+            view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+            
+            navigationItem.leftBarButtonItem = UIBarButtonItem(
+                title: "Cancel",
+                style: .plain,
+                target: self,
+                action: #selector(cancelTapped)
+            )
+            
+            navigationItem.rightBarButtonItem = UIBarButtonItem(
+                title: "Export",
+                style: .done,
+                target: self,
+                action: #selector(exportTapped)
+            )
+            
+            // Pre-select all categories
+            selectedIndices = Set(0..<categories.count)
+            
+            tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
+            tableView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+            
+            // Apply navigation bar theme
+            updateNavigationBarTheme()
+        }
+        private func updateNavigationBarTheme() {
+            guard let navigationController = navigationController else { return }
+            ThemeManager.apply(to: navigationController, traitCollection: traitCollection)
+        }
+        override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+            super.traitCollectionDidChange(previousTraitCollection)
+            
+            // Update theme when switching between light/dark mode
+            overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
+            view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+            tableView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+            updateNavigationBarTheme()
+            tableView.reloadData()
+        }
+        @objc private func cancelTapped() {
+            dismiss(animated: true)
+        }
+        
+        @objc private func exportTapped() {
+            let selectedCategories = selectedIndices.sorted().map { categories[$0] }
+            
+            guard !selectedCategories.isEmpty else {
+                let alert = UIAlertController(
+                    title: "No Categories Selected",
+                    message: "Please select at least one category to export.",
+                    preferredStyle: .alert
+                )
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                present(alert, animated: true)
+                return
+            }
+            
+            dismiss(animated: true) {
+                self.completion(selectedCategories)
+            }
+        }
+        
+        // MARK: - Table View Data Source
+        
+        override func numberOfSections(in tableView: UITableView) -> Int {
+            return 1
+        }
+        
+        override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+            return categories.count
+        }
+        
+        override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
+            
+            let category = categories[indexPath.row]
+            let contactCount = category.contacts.count
+            
+            cell.textLabel?.text = "\(category.name) (\(contactCount) contacts)"
+            cell.textLabel?.textColor = ThemeManager.titleColor(for: traitCollection)
+            cell.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+            cell.accessoryType = selectedIndices.contains(indexPath.row) ? .checkmark : .none
+            cell.selectionStyle = .none
+            
+            // Set checkmark color to match theme
+            cell.tintColor = ThemeManager.titleColor(for: traitCollection)
+            
+            return cell
+        }
+        
+        override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+            if selectedIndices.contains(indexPath.row) {
+                selectedIndices.remove(indexPath.row)
+            } else {
+                selectedIndices.insert(indexPath.row)
+            }
+            
+            tableView.reloadRows(at: [indexPath], with: .none)
+        }
+        
+        override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+            return "Select categories to include in export:"
+        }
+        
+        override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
+            let totalSelected = selectedIndices.count
+            let totalContacts = selectedIndices.reduce(0) { sum, index in
+                sum + categories[index].contacts.count
+            }
+            
+            return totalSelected > 0 ?
+                "\(totalSelected) categories selected (\(totalContacts) total contacts)" :
+                "No categories selected"
+        }
+    }
     }
