@@ -286,7 +286,7 @@ struct HelpContent {
         ]
     )
     
-    // MARK: - Contacts Category - ENHANCED
+    // MARK: - Contacts Category - UPDATED
     
     static let contactsCategory = HelpCategory(
         id: "contacts",
@@ -300,7 +300,7 @@ struct HelpContent {
                 screenshot: UIImage(named: "help_contacts_overview"),
                 detailedContent: """
                 The Contacts section organizes maritime contacts by categories:
-                • Emergency
+                • Emergency (protected category - cannot be deleted or renamed)
                 • Coast Guard
                 • Tug Services
                 • Dispatch
@@ -309,7 +309,12 @@ struct HelpContent {
                 • Vessel Agent
                 • Pilot Boat Operators
                 
-                You can create additional categories as needed. Tap section headers to expand/collapse categories for better organization.
+                You can:
+                • Create additional categories as needed
+                • Tap section headers to expand/collapse categories
+                • Drag and drop contacts between categories
+                • Long-press section headers to move categories (except Emergency)
+                • Search across all contacts using the search bar
                 """
             ),
             HelpTopic(
@@ -320,7 +325,7 @@ struct HelpContent {
                 detailedContent: """
                 To add a single contact:
                 1. Go to Contacts
-                2. Tap "Add Single Contact" at the bottom
+                2. Tap "Add Contact" at the bottom
                 3. Choose which category to add to
                 4. Either:
                    • Tap "Import from Contacts" to select from your phone
@@ -338,90 +343,99 @@ struct HelpContent {
                 • Role/Title
                 • Email
                 • Notes
+                
+                All contacts are automatically timestamped when last used to help surface your most important contacts during emergencies.
                 """
             ),
             HelpTopic(
                 id: "batch_import",
-                title: "Multiple Importing Contacts",
-                content: "Quickly import multiple contacts from your phone's contact list.",
+                title: "Batch Add Contacts",
+                content: "Quickly import multiple contacts from your phone's contact list at once.",
                 screenshot: UIImage(named: "help_batch_import"),
                 detailedContent: """
                 To import multiple contacts at once:
                 1. Go to Contacts
-                2. Tap "Multiple Import" at the bottom
+                2. Tap "Batch Add Contacts" at the bottom
                 3. Select multiple contacts from your phone
+                4. Contacts will be imported to a timestamped "Imported" category
                 
-                These contacts will be:
-                • Added to an "Imported" category with timestamp
-                • Available to drag and drop into other categories
-                • Automatically filled with available information (name, phone, email, organization)
+                After import, you can:
+                • Drag contacts to appropriate categories
+                • Edit contact information to add maritime-specific fields
+                • Delete the imported category when no longer needed
                 
-                This is useful when setting up the app with your existing contacts.
+                This is the fastest way to set up the app with your existing contacts.
                 """
             ),
             HelpTopic(
-                id: "batch_export_new",
-                title: "Batch Export Contacts",
-                content: "Export multiple contact categories at once for backup or sharing.",
-                screenshot: UIImage(named: "help_batch_export"),
+                id: "export_contacts_new",
+                title: "Export Contacts",
+                content: "Export your contact database as a JSON file for backup or sharing with other pilots.",
+                screenshot: UIImage(named: "help_export_contacts"),
                 detailedContent: """
-                To export multiple contact categories:
+                To export contacts:
                 1. Go to Contacts
-                2. Tap "Batch Export" at the bottom
+                2. Tap "Export Contacts" at the bottom
                 3. Select which categories to export:
-                   • Check/uncheck individual categories
-                   • See contact counts for each category
                    • All categories are pre-selected
-                4. Tap "Export" to create a .shipcontacts file
+                   • Uncheck categories you don't want to include
+                   • See contact counts for each category
+                4. Tap "Export" to create a JSON file
+                5. Choose how to share (Email, AirDrop, Messages, etc.)
                 
-                The exported file:
-                • Contains all selected categories and contacts
-                • Can be shared via email, AirDrop, messaging, etc.
+                The exported JSON file:
+                • Contains all selected contact information and categories
+                • Works in Gmail, Signal, iMessage, and other messaging apps
                 • Can be imported by other users with the app
-                • Perfect for standardizing contact databases across teams
-                
-                This is ideal for:
-                • Backing up your contact database
-                • Sharing contact lists with colleagues
-                • Distributing standard contact lists to pilot teams
+                • Can be opened from Files app or email attachments
+                • No file attachment restrictions
                 """
             ),
             HelpTopic(
                 id: "organizing_contacts",
-                title: "Organizing Contacts",
-                content: "Drag and drop contacts between categories to keep them organized.",
+                title: "Organizing Contacts & Categories",
+                content: "Drag and drop contacts between categories and reorder categories to keep everything organized.",
                 screenshot: UIImage(named: "help_organize_contacts"),
                 detailedContent: """
-                To organize your contacts:
-                1. Press and hold on any contact
-                2. Drag it to another category
-                3. Release to drop it there
+                To organize contacts:
+                • Press and hold any contact to drag it to another category
+                • Contacts will move and the change is saved automatically
                 
-                To manage categories:
+                To organize categories:
+                • Long-press and drag section headers to reorder categories
+                • The Emergency category cannot be moved (always stays first)
                 • Tap "Add Category" to create new categories
-                • Expand/collapse categories by tapping the header
-                • System categories (Emergency, Coast Guard, etc.) cannot be deleted
-                • User-created categories can be deleted when empty
+                • Tap the settings icon on section headers to rename or delete categories
+                • Only empty categories can be deleted (Emergency category is protected)
                 
-                Keep your most important contacts in the Emergency category for quick access during emergencies.
+                To manage contacts:
+                • Tap phone icon to call directly
+                • Tap message icon to text
+                • Tap and hold contacts for more options (edit, delete)
+                • Use the search bar to find contacts quickly
+                
+                The app tracks contact usage to prioritize frequently used contacts during emergencies.
                 """
             ),
             HelpTopic(
                 id: "using_contacts",
-                title: "Using Contacts",
-                content: "Quickly call or text contacts, or select them for emergency SMS messages.",
+                title: "Using Contacts in Emergencies",
+                content: "During emergencies, the app intelligently suggests your most important contacts for SMS messaging.",
                 screenshot: UIImage(named: "help_using_contacts"),
                 detailedContent: """
-                From the Contacts list:
-                • Tap the phone icon to call a contact directly
-                • Tap the message icon to text a contact
-                • Tap and hold any contact to see all options (call, text, edit, delete)
-                • Search contacts using the search bar at the top
+                Emergency SMS contact selection:
+                • When sending emergency SMS, you can select from both Emergency and Operational contacts
+                • Frequently used contacts appear at the top of the selection list
+                • Emergency category contacts are always prioritized
+                • The app tracks usage patterns to surface your most important contacts
                 
-                During an emergency:
-                • When using Emergency SMS, you'll be able to select from both emergency and operational contacts
-                • Frequently used contacts will appear at the top of the selection list
-                • The app tracks usage to surface your most important contacts
+                Daily contact usage:
+                • Tap the phone icon to call any contact directly
+                • Tap the message icon to send a regular text message
+                • Search contacts using the search bar at the top
+                • Tap and hold any contact to see all options (call, text, edit, delete)
+                
+                Keep your most critical contacts in the Emergency category for fastest access during emergencies.
                 """
             )
         ]
@@ -507,7 +521,7 @@ struct HelpContent {
                 To send an emergency SMS:
                 1. Open any checklist
                 2. Tap the message icon (📱) in the toolbar
-                3. Select one or more emergency contacts (both Emergency and Operational contacts available)
+                3. Select one or more contacts (both Emergency and Operational contacts available)
                 4. Enter the vessel name when prompted
                 5. Add a brief situation description
                 6. Tap "Send"
@@ -519,6 +533,11 @@ struct HelpContent {
                 • GPS location (if added)
                 • Tide and wind data (if added)
                 • Your situation description
+                
+                Contact selection prioritizes:
+                • Emergency category contacts first
+                • Frequently used contacts
+                • Recently contacted individuals
                 
                 For best results, add location, tide, and wind data before sending.
                 """
@@ -532,7 +551,7 @@ struct HelpContent {
                 To set up emergency contacts:
                 1. Go to Contacts
                 2. Open the Emergency category
-                3. Tap "Add Single Contact" at the bottom
+                3. Tap "Add Contact" at the bottom
                 4. Select "Emergency" as the category
                 5. Enter or import contact information
                 
@@ -540,6 +559,12 @@ struct HelpContent {
                 • Available for selection when sending emergency SMS
                 • Shown at the top of the contact selection screen
                 • Prioritized in the contact suggestion system
+                • Protected from accidental deletion or category changes
+                
+                The Emergency category:
+                • Cannot be deleted or renamed (it's protected for SMS feature)
+                • Always appears first in the contacts list
+                • Is automatically expanded when entering contact selection
                 
                 Make sure to add these contacts before you need them in an emergency.
                 """
@@ -547,7 +572,7 @@ struct HelpContent {
         ]
     )
     
-    // MARK: - Import/Export Category - ENHANCED
+    // MARK: - Import/Export Category - UPDATED
     
     static let importExportCategory = HelpCategory(
         id: "import_export",
@@ -562,15 +587,15 @@ struct HelpContent {
                 detailedContent: """
                 To import a checklist from CSV:
                 
-                1. Create a spreadsheet file with these column headers. Text must be exactly "Priority" and "Item" for the app to detect:
+                1. Create a spreadsheet file with these column headers (text must be exactly "Priority" and "Item"):
                    • Column A: Priority
                    • Column B: Item
                 
-                2. Add rows for individual items with this format:
-                   • Priority value: This is where you can use any category you want (Initial Actions, Communications, Damage Control, Post Incident, etc.)
-                   • Item value: The checklist item text (Sound General Alarm, etc.)
+                2. Add rows for individual items:
+                   • Priority value: Category name (Initial Actions, Communications, Damage Control, etc.)
+                   • Item value: The checklist item text
                 
-                3. Save as .csv format from Excel or Numbers (NOT UTF-8 CSV)
+                3. Save as CSV format from Excel or Numbers (standard CSV, NOT UTF-8 CSV)
                 
                 4. In the app:
                    • Go to Custom Checklists
@@ -583,57 +608,55 @@ struct HelpContent {
             HelpTopic(
                 id: "sharing_checklists",
                 title: "Sharing Custom Checklists",
-                content: "Share your custom checklists with other pilots.",
+                content: "Share your custom checklists with other pilots using the universal JSON format.",
                 screenshot: UIImage(named: "help_share_checklist"),
                 detailedContent: """
                 To share a custom checklist:
                 1. Go to Custom Checklists
                 2. Swipe left on any checklist
                 3. Tap "Share"
-                4. Choose how to share (Email, AirDrop, etc.)
+                4. Choose how to share (Email, AirDrop, Messages, etc.)
                 
                 The shared file:
                 • Has a .shipchecklist extension
                 • Contains all sections and items
                 • Can be opened directly on another device with the app
+                • Works across all sharing platforms
                 
-                This is great for sharing specialized checklists with colleagues.
+                This is perfect for sharing specialized checklists with colleagues or distributing standardized procedures across teams.
                 """
             ),
             HelpTopic(
-                id: "exporting_contacts_enhanced",
-                title: "Exporting Contact Lists",
-                content: "Share your organized contact lists with other pilots using the new multi-category export feature.",
-                screenshot: UIImage(named: "help_export_contacts"),
+                id: "json_contacts_export",
+                title: "JSON Contacts Export & Import",
+                content: "Export and import contact lists using the universal JSON format for maximum compatibility.",
+                screenshot: UIImage(named: "help_json_contacts"),
                 detailedContent: """
-                To export contacts (individual or multiple categories):
-                
-                Single Category Export:
+                Exporting Contacts (JSON Format):
                 1. Go to Contacts
-                2. Swipe left on any category
-                3. Tap "Export"
-                4. Choose sharing method
-                
-                Multi-Category Export (NEW!):
-                1. Go to Contacts
-                2. Tap "Batch Export" at the bottom
-                3. Select which categories to include:
-                   • All categories are pre-selected
-                   • Uncheck categories you don't want to export
-                   • See contact counts for each category
+                2. Tap "Export Contacts" at the bottom
+                3. Select categories to include (or keep all selected)
                 4. Tap "Export"
                 5. Choose sharing method
                 
-                The exported file:
-                • Has a .shipcontacts extension
-                • Contains all selected contact information and categories
-                • Can be opened directly on another device with the app
-                • Preserves category organization
+                Importing Contacts:
+                • JSON files are automatically detected when opened
+                • Share JSON files to the app from any source
+                • Files can be opened from email attachments, Messages, Files app, etc.
+                • Contacts are imported with timestamped category names
                 
-                This helps ensure all pilots have access to the same contact information and is perfect for:
-                • Team standardization
-                • Backup purposes
-                • Distributing updated contact lists
+                Benefits of JSON format:
+                • Works in ALL messaging and email apps (Gmail, Signal, iMessage, etc.)
+                • No file attachment restrictions
+                • Universal compatibility across devices and platforms
+                • Preserves all contact information and categories
+                • Can be opened from any file source
+                
+                Perfect for:
+                • Team standardization across pilot groups
+                • Backup and restore of contact databases
+                • Sharing contact lists without compatibility issues
+                • Cross-platform contact management
                 """
             ),
             HelpTopic(
@@ -644,11 +667,14 @@ struct HelpContent {
                 detailedContent: """
                 To import contacts from CSV:
                 
-                1. Create a spreadsheet with contact information
-                2. Required columns: Name, Phone
-                3. Optional columns: Email, Organization, Role, VHF, Call Sign, Port, Notes
-                4. Save as .csv format
-                5. Share the CSV file to your app or use Files app to open it
+                1. Create a spreadsheet with contact information:
+                   • Required columns: Name, Phone
+                   • Optional columns: Email, Organization, Role, VHF, Call Sign, Port, Notes
+                   • Column headers are flexible (the app recognizes many variations)
+                
+                2. Save as CSV format
+                
+                3. Share the CSV file to the app or open from Files app
                 
                 The app will:
                 • Automatically detect if it's a contacts CSV or checklist CSV
@@ -656,10 +682,54 @@ struct HelpContent {
                 • Preserve all available contact information
                 • Allow you to drag contacts to appropriate categories afterward
                 
-                This is useful for:
+                Supported column variations:
+                • Name: "Name", "Contact Name", "Full Name", "Person"
+                • Phone: "Phone", "Mobile", "Cell", "Telephone", "Phone Number"
+                • Email: "Email", "E-mail", "Email Address"
+                • Organization: "Company", "Organization", "Employer", "Business"
+                • Role: "Title", "Job Title", "Position", "Role"
+                • VHF: "VHF", "VHF Channel", "Radio", "Channel"
+                • Call Sign: "Call Sign", "Callsign", "Radio Call Sign"
+                • Port: "Port", "Location", "Harbor", "Marina"
+                
+                This is ideal for:
                 • Setting up the app with existing contact databases
-                • Importing contacts from other systems
-                • Bulk contact management
+                • Importing contacts from other maritime systems
+                • Bulk contact management from spreadsheets
+                """
+            ),
+            HelpTopic(
+                id: "file_compatibility",
+                title: "File Format Compatibility",
+                content: "Understanding which file formats work best for sharing and importing.",
+                screenshot: UIImage(named: "help_file_formats"),
+                detailedContent: """
+                Supported Import Formats:
+                • JSON (.json) - Universal format for contacts and checklists
+                • CSV (.csv) - For bulk contact and checklist imports
+                • Ship Checklists (.shipchecklist) - For backwards compatibility
+                
+                Recommended Export Formats:
+                • JSON for contacts - Works everywhere (Gmail, Signal, iMessage, AirDrop)
+                • Ship Checklist format for custom checklists
+                
+                File Sharing Compatibility:
+                ✅ JSON files work in:
+                • All email clients (Gmail, Outlook, Apple Mail)
+                • All messaging apps (iMessage, Signal, WhatsApp, Teams)
+                • AirDrop and file sharing services
+                • Cloud storage services (iCloud, Google Drive, Dropbox)
+                
+                ✅ CSV files work in:
+                • Most email and messaging systems
+                • Can be opened and edited in Excel, Numbers, Google Sheets
+                
+                Why JSON is preferred:
+                • No file attachment restrictions
+                • Universal app compatibility
+                • Preserves all data structure and formatting
+                • Works across all platforms and devices
+                • Future-proof standard format
                 """
             )
         ]
