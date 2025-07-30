@@ -342,13 +342,13 @@ struct HelpContent {
             ),
             HelpTopic(
                 id: "batch_import",
-                title: "Batch Importing Contacts",
+                title: "Multiple Importing Contacts",
                 content: "Quickly import multiple contacts from your phone's contact list.",
                 screenshot: UIImage(named: "help_batch_import"),
                 detailedContent: """
                 To import multiple contacts at once:
                 1. Go to Contacts
-                2. Tap "Batch Import" at the bottom
+                2. Tap "Multiple Import" at the bottom
                 3. Select multiple contacts from your phone
                 
                 These contacts will be:

@@ -6,24 +6,28 @@
 import UIKit
 import MessageUI
 import ContactsUI
+import UniformTypeIdentifiers
 
 class ContactsViewController: UIViewController, CNContactPickerDelegate {
     
     // MARK: - Properties
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private let searchController = UISearchController(searchResultsController: nil)
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
     private let bottomToolbar = UIToolbar()
     private var categories: [ContactCategory] = []
     private var filteredContacts: [(contact: OperationalContact, category: String)] = []
     private var isSearching: Bool {
         return searchController.isActive && !(searchController.searchBar.text?.isEmpty ?? true)
-        
     }
     private var expandedSections = Set<Int>()
     
     // NEW: Flag to open directly to Emergency category
     var openToEmergencyCategory = false
     var returnToChecklist: (() -> Void)?
+    
+    // Section drag properties - SIMPLIFIED
+    private var isDraggingSections = false
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -58,28 +62,32 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
     }
     
     override func viewDidAppear(_ animated: Bool) {
-            super.viewDidAppear(animated)
+        super.viewDidAppear(animated)
+        
+        // If we should open to Emergency category
+        if openToEmergencyCategory {
+            openToEmergencyCategory = false // Reset flag
             
-            // If we should open to Emergency category
-            if openToEmergencyCategory {
-                openToEmergencyCategory = false // Reset flag
-                
-                // Find Emergency category index
-                if let emergencyIndex = categories.firstIndex(where: { $0.name == "Emergency" }) {
-                    // Scroll to Emergency section
-                    let indexPath = IndexPath(row: 0, section: emergencyIndex)
-                    if categories[emergencyIndex].contacts.isEmpty {
-                        // If no contacts, prompt to add one
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            self.addContactToCategory(at: emergencyIndex)
-                        }
-                    } else {
-                        // Scroll to show the Emergency section
-                        tableView.scrollToRow(at: indexPath, at: .top, animated: true)
+            // Find Emergency category index
+            if let emergencyIndex = categories.firstIndex(where: { $0.name == "Emergency" }) {
+                // Scroll to Emergency section
+                let indexPath = IndexPath(row: 0, section: emergencyIndex)
+                if categories[emergencyIndex].contacts.isEmpty {
+                    // If no contacts, prompt to add one
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        self.addContactToCategory(at: emergencyIndex)
                     }
+                } else {
+                    // Scroll to show the Emergency section
+                    tableView.scrollToRow(at: indexPath, at: .top, animated: true)
                 }
             }
         }
+        
+        // Add table-level long press for section reordering
+        setupSectionReordering()
+    }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
 
@@ -176,11 +184,12 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         tableView.dropDelegate = self
         tableView.dragInteractionEnabled = true
         
+        // Enable section reordering (this is the key addition)
+        tableView.allowsMultipleSelectionDuringEditing = false
+        
         // Register cells
         tableView.register(ContactCell.self, forCellReuseIdentifier: "ContactCell")
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
-        
-        // Remove setupTableHeader() from here - we'll call it later
         
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
@@ -189,6 +198,7 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
             tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
     }
+    
     private func setupToolbar() {
         bottomToolbar.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(bottomToolbar)
@@ -198,7 +208,7 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         let flexible = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
 
         bottomToolbar.items = [
-            toolbarButton(title: "Batch\nImport", action: #selector(importContactsTapped)),
+            toolbarButton(title: "Multiple\nImport", action: #selector(importContactsTapped)),
             flexible,
             toolbarButton(title: "Batch\nExport", action: #selector(exportAllContactsTapped)),
             flexible,
@@ -213,6 +223,7 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
             bottomToolbar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
     }
+    
     private func updateTheme() {
         view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
         tableView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
@@ -253,10 +264,154 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         }
     }
     
+    // MARK: - Section Reordering (Simplified Approach)
+    private func setupSectionReordering() {
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleSectionLongPress(_:)))
+        longPress.minimumPressDuration = 0.6
+        tableView.addGestureRecognizer(longPress)
+        print("Section reordering gesture added")
+    }
+    
+    @objc private func handleSectionLongPress(_ gesture: UILongPressGestureRecognizer) {
+        let location = gesture.location(in: tableView)
+        
+        switch gesture.state {
+        case .began:
+            startSectionReorderingMode(at: location)
+        case .ended, .cancelled:
+            endSectionReorderingMode()
+        default:
+            break
+        }
+    }
+    
+    private func startSectionReorderingMode(at location: CGPoint) {
+        // Find which section header was pressed
+        for section in 0..<categories.count {
+            let headerRect = tableView.rectForHeader(inSection: section)
+            if headerRect.contains(location) {
+                let category = categories[section]
+                
+                // Don't allow reordering Emergency category
+                guard category.name != "Emergency" else {
+                    showReorderingHint("Emergency category cannot be moved")
+                    return
+                }
+                
+                print("Starting section reordering mode for: \(category.name)")
+                impactFeedback.impactOccurred()
+                showReorderingInstructions(for: category.name)
+                return
+            }
+        }
+    }
+    
+    private func endSectionReorderingMode() {
+        isDraggingSections = false
+    }
+    
+    private func showReorderingInstructions(for categoryName: String) {
+        let alert = UIAlertController(
+            title: "Reorder \(categoryName)",
+            message: "Choose where to move this category:",
+            preferredStyle: .actionSheet
+        )
+        
+        // Find current position
+        guard let currentIndex = categories.firstIndex(where: { $0.name == categoryName }) else { return }
+        
+        // Add options for each valid position
+        for (index, category) in categories.enumerated() {
+            if index == currentIndex { continue }
+            if category.name == "Emergency" { continue } // Can't move before/after Emergency
+            
+            let title = index < currentIndex ? "Move before \(category.name)" : "Move after \(category.name)"
+            
+            alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                self?.moveCategoryFromIndex(currentIndex, toIndex: index)
+            })
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        // iPad support - FIXED
+        if let popover = alert.popoverPresentationController {
+            popover.sourceView = tableView
+            if let headerView = tableView.headerView(forSection: currentIndex) {
+                popover.sourceRect = headerView.frame
+            } else {
+                popover.sourceRect = CGRect(x: tableView.bounds.midX, y: tableView.bounds.midY, width: 0, height: 0)
+            }
+        }
+        
+        present(alert, animated: true)
+    }
+    
+    private func moveCategoryFromIndex(_ fromIndex: Int, toIndex: Int) {
+        let actualToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex
+        
+        tableView.performBatchUpdates({
+            // Move in data model
+            let movedCategory = categories.remove(at: fromIndex)
+            categories.insert(movedCategory, at: actualToIndex)
+            
+            // Save changes
+            ContactsManager.shared.saveCategories(categories)
+            
+            // Update expanded sections tracking
+            updateExpandedSectionsAfterMove(from: fromIndex, to: actualToIndex)
+            
+            // Move in table view
+            tableView.moveSection(fromIndex, toSection: actualToIndex)
+        })
+        
+        impactFeedback.impactOccurred()
+        print("Moved category from \(fromIndex) to \(actualToIndex)")
+    }
+    
+    private func updateExpandedSectionsAfterMove(from: Int, to: Int) {
+        let wasSourceExpanded = expandedSections.contains(from)
+        
+        // Remove the moved section
+        expandedSections.remove(from)
+        
+        // Adjust all other expanded sections
+        var newExpandedSections = Set<Int>()
+        for section in expandedSections {
+            var newIndex = section
+            
+            if section > from {
+                newIndex -= 1
+            }
+            if newIndex >= to {
+                newIndex += 1
+            }
+            
+            newExpandedSections.insert(newIndex)
+        }
+        
+        // Add back the moved section if it was expanded
+        if wasSourceExpanded {
+            newExpandedSections.insert(to)
+        }
+        
+        expandedSections = newExpandedSections
+    }
+    
+    private func showReorderingHint(_ message: String) {
+        let alert = UIAlertController(title: "Cannot Reorder", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+    
     // MARK: - Data
-    // Update the loadData method to reset expanded sections:
     private func loadData() {
         categories = ContactsManager.shared.loadCategories()
+        
+        // Debug: Print category system status
+        for (index, category) in categories.enumerated() {
+            print("Category \(index): \(category.name) - isSystemCategory: \(category.isSystemCategory)")
+        }
         
         // Reset expanded sections when data is reloaded
         expandedSections.removeAll()
@@ -314,36 +469,7 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         
         present(nav, animated: true)
     }
-    func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
-        let imported: [OperationalContact] = contacts.compactMap { contact in
-            guard let number = contact.phoneNumbers.first?.value.stringValue else { return nil }
-
-            var newContact = OperationalContact(name: "\(contact.givenName) \(contact.familyName)", phone: number)
-            newContact.email = contact.emailAddresses.first.map { String($0.value) }
-            newContact.organization = contact.organizationName.isEmpty ? nil : contact.organizationName
-            newContact.notes = "" // Optional: you can omit this line
-            return newContact
-        }
-
-        guard !imported.isEmpty else {
-            showAlert(title: "No Contacts Imported", message: "No valid phone numbers found.")
-            return
-        }
-        // Add to manager
-        ContactsManager.shared.addCategory(name: "Imported", contacts: imported, to: &categories)
-
-        // Reload UI
-        self.loadData()
-        self.tableView.reloadData()
-
-        // Notify user
-        showAlert(
-            title: "Imported",
-            message: imported.count == 1
-                ? "1 contact was added to the Imported category. You can drag and drop contacts to change category or order."
-                : "\(imported.count) contacts were added to the Imported category.You can drag and drop contacts to change category or order."
-        )
-    }
+    
     @objc private func importContactsTapped() {
         let picker = CNContactPickerViewController()
         picker.delegate = self
@@ -360,10 +486,16 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
             CNContactOrganizationNameKey,
             CNContactJobTitleKey
         ]
+        
+        // Apply theme
         picker.overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
+        
+        // Add custom navigation title to make purpose clear
+        picker.navigationItem.title = "Select Contacts to Import"
 
         present(picker, animated: true)
     }
+    
     @objc private func exportAllContactsTapped() {
         let multiSelectVC = MultiCategorySelectionViewController(categories: categories) { [weak self] selectedCategories in
             guard let self = self else { return }
@@ -383,6 +515,7 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         
         present(nav, animated: true)
     }
+    
     private func export(categories: [ContactCategory], suggestedFileName: String) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
@@ -428,6 +561,7 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
 
         present(activityVC, animated: true)
     }
+    
     private func addContactToCategory(at categoryIndex: Int) {
         let editor = ContactEditorViewController(mode: .add(categoryIndex: categoryIndex))
         editor.delegate = self
@@ -524,6 +658,7 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         
         present(alert, animated: true)
     }
+    
     private func toolbarButton(title: String, action: Selector) -> UIBarButtonItem {
         let label = UILabel()
         label.text = title
@@ -542,10 +677,237 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
 
         return UIBarButtonItem(customView: label)
     }
+    
     private func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
+    }
+    
+    private func showImportAlert(title: String, message: String, isSuccess: Bool) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        
+        if isSuccess {
+            // For successful imports, offer to view the imported contacts
+            alert.addAction(UIAlertAction(title: "View Imported", style: .default) { [weak self] _ in
+                // Find and scroll to the most recent "Imported" category
+                guard let self = self else { return }
+                
+                // Find the imported category (it should be the last one added)
+                if let importedIndex = self.categories.lastIndex(where: { $0.name.hasPrefix("Imported") }) {
+                    // Expand the section if it's collapsed
+                    self.expandedSections.insert(importedIndex)
+                    
+                    // Scroll to show the imported section
+                    let indexPath = IndexPath(row: 0, section: importedIndex)
+                    self.tableView.reloadData()
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        if importedIndex < self.tableView.numberOfSections &&
+                           self.tableView.numberOfRows(inSection: importedIndex) > 0 {
+                            self.tableView.scrollToRow(at: indexPath, at: .top, animated: true)
+                        }
+                    }
+                }
+            })
+            
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+        } else {
+            // For failed imports, just show OK
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+        }
+        
+        present(alert, animated: true)
+    }
+    
+    // MARK: - FIXED: Category Editing Methods
+    private func editCategoryTapped(at section: Int) {
+        let category = categories[section]
+        
+        let actionSheet = UIAlertController(
+            title: category.name,
+            message: nil,
+            preferredStyle: .actionSheet
+        )
+        
+        // Check if this category can be renamed
+        let renameCheckResult = ContactsManager.shared.canRenameCategory(at: section, in: categories)
+        if renameCheckResult.canRename {
+            actionSheet.addAction(UIAlertAction(title: "Rename", style: .default) { [weak self] _ in
+                self?.renameCategoryTapped(at: section)
+            })
+        }
+        
+        // Check if this category can be deleted
+        let deleteCheckResult = ContactsManager.shared.canDeleteCategory(at: section, in: categories)
+        if deleteCheckResult.canDelete {
+            // Can delete directly
+            actionSheet.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+                self?.deleteCategoryTapped(at: section)
+            })
+        } else if !category.isSystemCategory {
+            // Category has contacts but is not Emergency - show delete with confirmation
+            actionSheet.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+                self?.confirmDeleteCategoryWithContacts(at: section, reason: deleteCheckResult.reason ?? "")
+            })
+        }
+        
+        // If this is Emergency category, show explanation
+        if category.isSystemCategory {
+            actionSheet.message = "The Emergency category is protected and cannot be modified as it's required for the SMS feature."
+        }
+        
+        actionSheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        // iPad support
+        if let popover = actionSheet.popoverPresentationController {
+            if let headerView = tableView.headerView(forSection: section) {
+                popover.sourceView = headerView
+                popover.sourceRect = headerView.bounds
+            } else {
+                popover.sourceView = tableView
+                popover.sourceRect = CGRect(x: tableView.bounds.midX, y: tableView.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
+        }
+        
+        present(actionSheet, animated: true)
+    }
+
+    private func renameCategoryTapped(at section: Int) {
+        let category = categories[section]
+        
+        let alert = UIAlertController(
+            title: "Rename Category",
+            message: "Enter a new name for '\(category.name)'",
+            preferredStyle: .alert
+        )
+        
+        alert.addTextField { textField in
+            textField.text = category.name
+            textField.placeholder = "Category Name"
+            textField.autocapitalizationType = .words
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Rename", style: .default) { [weak self] _ in
+            guard let self = self,
+                  let newName = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !newName.isEmpty else { return }
+            
+            self.categories[section].name = newName
+            ContactsManager.shared.saveCategories(self.categories)
+            self.tableView.reloadSections(IndexSet(integer: section), with: .none)
+        })
+        
+        present(alert, animated: true)
+    }
+
+    private func deleteCategoryTapped(at section: Int) {
+        if ContactsManager.shared.deleteCategory(at: section, from: &categories) {
+            expandedSections.remove(section)
+            // Adjust expanded sections indices
+            let adjustedExpanded = expandedSections.compactMap { index in
+                index > section ? index - 1 : (index == section ? nil : index)
+            }
+            expandedSections = Set(adjustedExpanded)
+            
+            tableView.deleteSections(IndexSet(integer: section), with: .automatic)
+        }
+    }
+
+    private func confirmDeleteCategoryWithContacts(at section: Int, reason: String) {
+        let alert = UIAlertController(
+            title: "Delete Category",
+            message: reason,
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            guard let self = self else { return }
+            
+            ContactsManager.shared.forceDeleteCategory(at: section, from: &self.categories)
+            self.expandedSections.remove(section)
+            
+            // Adjust expanded sections indices
+            let adjustedExpanded = self.expandedSections.compactMap { index in
+                index > section ? index - 1 : (index == section ? nil : index)
+            }
+            self.expandedSections = Set(adjustedExpanded)
+            
+            self.tableView.deleteSections(IndexSet(integer: section), with: .automatic)
+        })
+        
+        present(alert, animated: true)
+    }
+}
+
+// MARK: - CNContactPickerDelegate
+extension ContactsViewController {
+    func contactPicker(_ picker: CNContactPickerViewController, didSelect contacts: [CNContact]) {
+        // Show immediate feedback that processing is happening
+        let processingAlert = UIAlertController(
+            title: "Importing Contacts",
+            message: "Processing \(contacts.count) contact\(contacts.count == 1 ? "" : "s")...",
+            preferredStyle: .alert
+        )
+        
+        picker.present(processingAlert, animated: true) {
+            // Process contacts in background
+            DispatchQueue.global(qos: .userInitiated).async {
+                let imported: [OperationalContact] = contacts.compactMap { contact in
+                    guard let number = contact.phoneNumbers.first?.value.stringValue else { return nil }
+
+                    var newContact = OperationalContact(
+                        name: "\(contact.givenName) \(contact.familyName)".trimmingCharacters(in: .whitespaces),
+                        phone: number
+                    )
+                    newContact.email = contact.emailAddresses.first.map { String($0.value) }
+                    newContact.organization = contact.organizationName.isEmpty ? nil : contact.organizationName
+                    newContact.role = contact.jobTitle.isEmpty ? nil : contact.jobTitle
+                    return newContact
+                }
+
+                DispatchQueue.main.async {
+                    // Dismiss processing alert
+                    processingAlert.dismiss(animated: true) {
+                        // Dismiss the contact picker
+                        picker.dismiss(animated: true) {
+                            // Handle results
+                            guard !imported.isEmpty else {
+                                self.showImportAlert(
+                                    title: "No Contacts Imported",
+                                    message: "No valid phone numbers found in the selected contacts.",
+                                    isSuccess: false
+                                )
+                                return
+                            }
+                            
+                            // Add to manager
+                            let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
+                            let categoryName = "Imported (\(timestamp))"
+                            ContactsManager.shared.addCategory(name: categoryName, contacts: imported, to: &self.categories)
+
+                            // Reload UI
+                            self.loadData()
+                            self.tableView.reloadData()
+
+                            // Show success with details
+                            let message = imported.count == 1
+                                ? "1 contact was imported into '\(categoryName)'. You can drag and drop contacts to reorganize them."
+                                : "\(imported.count) contacts were imported into '\(categoryName)'. You can drag and drop contacts to reorganize them."
+                            
+                            self.showImportAlert(
+                                title: "Import Successful",
+                                message: message,
+                                isSuccess: true
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -586,40 +948,38 @@ extension ContactsViewController: UITableViewDataSource {
             return container
         }
         
-        // Create a button that acts as the header
-        let button = UIButton(type: .system)
-        button.tag = section
-        button.addTarget(self, action: #selector(toggleSection(_:)), for: .touchUpInside)
+        // Create custom header view
+        let headerView = SectionHeaderView()
+        headerView.backgroundColor = .clear
         
-        // Configure the button appearance
+        let category = categories[section]
         let isExpanded = expandedSections.contains(section)
-        let chevron = isExpanded ? "chevron.down" : "chevron.right"
         
-        // Create the title with chevron
-        let title = categories[section].name
-        button.setTitle(title, for: .normal)
-        button.setImage(UIImage(systemName: chevron), for: .normal)
+        headerView.configure(
+            title: category.name,
+            isExpanded: isExpanded,
+            isEmergencyCategory: category.isSystemCategory,
+            section: section,
+            traitCollection: traitCollection
+        )
         
-        // Style the button
-        button.contentHorizontalAlignment = .left
-        button.titleLabel?.font = .preferredFont(forTextStyle: .headline)
-        button.tintColor = ThemeManager.titleColor(for: traitCollection)
+        // Set up actions
+        headerView.onToggle = { [weak self] in
+            self?.toggleSection(section)
+        }
         
-        // Add some padding
-        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
-        button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 0)
+        headerView.onEdit = { [weak self] in
+            self?.editCategoryTapped(at: section)
+        }
         
-        return button
+        return headerView
     }
-    // 5. Add the height for header:
+    
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
         return 44
     }
 
-    // 6. Add the toggle section method:
-    @objc private func toggleSection(_ sender: UIButton) {
-        let section = sender.tag
-        
+    private func toggleSection(_ section: Int) {
         if expandedSections.contains(section) {
             expandedSections.remove(section)
         } else {
@@ -629,7 +989,6 @@ extension ContactsViewController: UITableViewDataSource {
         // Animate the section reload
         tableView.reloadSections(IndexSet(integer: section), with: .automatic)
     }
-
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         if isSearching {
@@ -655,6 +1014,18 @@ extension ContactsViewController: UITableViewDataSource {
             }
             return cell
         }
+    }
+    
+    // MARK: - Section Reordering Support
+    func tableView(_ tableView: UITableView, canMoveSection section: Int) -> Bool {
+        // Emergency category cannot be moved (it should always stay at index 0)
+        return !categories[section].isSystemCategory
+    }
+    
+    func tableView(_ tableView: UITableView, targetIndexPathForMoveFromRowAt sourceIndexPath: IndexPath, toProposedIndexPath proposedDestinationIndexPath: IndexPath) -> IndexPath {
+        // This method is for row movement, not section movement
+        // We'll handle section movement in the drop delegate
+        return proposedDestinationIndexPath
     }
 }
 
@@ -693,6 +1064,8 @@ extension ContactsViewController: UITableViewDelegate {
 
 // MARK: - Drag & Drop
 extension ContactsViewController: UITableViewDragDelegate, UITableViewDropDelegate {
+    
+    // MARK: - Drag Delegate Methods
     func tableView(_ tableView: UITableView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
         guard !isSearching else { return [] }
         
@@ -706,7 +1079,9 @@ extension ContactsViewController: UITableViewDragDelegate, UITableViewDropDelega
         return [dragItem]
     }
     
+    // MARK: - Drop Delegate Methods (for contact reordering only)
     func tableView(_ tableView: UITableView, dropSessionDidUpdate session: UIDropSession, withDestinationIndexPath destinationIndexPath: IndexPath?) -> UITableViewDropProposal {
+        // For contact drops, use existing logic
         // Don't allow drops in collapsed sections
         if let dest = destinationIndexPath, !expandedSections.contains(dest.section) {
             return UITableViewDropProposal(operation: .forbidden)
@@ -714,16 +1089,39 @@ extension ContactsViewController: UITableViewDragDelegate, UITableViewDropDelega
         
         return UITableViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
     }
-    
+
     func tableView(_ tableView: UITableView, performDropWith coordinator: UITableViewDropCoordinator) {
-        guard let item = coordinator.items.first,
-              let (_, sourceIndexPath) = item.dragItem.localObject as? (OperationalContact, IndexPath),
+        guard let item = coordinator.items.first else { return }
+        
+        // Only handle contact reordering
+        guard let (_, sourceIndexPath) = item.dragItem.localObject as? (OperationalContact, IndexPath),
               let destinationIndexPath = coordinator.destinationIndexPath else { return }
         
         tableView.performBatchUpdates({
             ContactsManager.shared.moveContact(from: sourceIndexPath, to: destinationIndexPath, in: &categories)
             tableView.moveRow(at: sourceIndexPath, to: destinationIndexPath)
         })
+    }
+    
+    // MARK: - Enhanced Drop Session Handling
+    func tableView(_ tableView: UITableView, canHandle session: UIDropSession) -> Bool {
+        // We can handle contact drags
+        return session.hasItemsConforming(toTypeIdentifiers: [UTType.text.identifier])
+    }
+    
+    func tableView(_ tableView: UITableView, dropSessionDidEnter session: UIDropSession) {
+        // Provide visual feedback when drag enters the table view
+        tableView.alpha = 0.9
+    }
+    
+    func tableView(_ tableView: UITableView, dropSessionDidExit session: UIDropSession) {
+        // Remove visual feedback when drag exits
+        tableView.alpha = 1.0
+    }
+    
+    func tableView(_ tableView: UITableView, dropSessionDidEnd session: UIDropSession) {
+        // Ensure we reset visual state
+        tableView.alpha = 1.0
     }
 }
 
@@ -751,168 +1149,290 @@ extension ContactsViewController: MFMessageComposeViewControllerDelegate {
 // MARK: - ContactEditorDelegate
 extension ContactsViewController: ContactEditorDelegate {
     func contactEditor(_ editor: ContactEditorViewController, didSave contact: OperationalContact, mode: ContactEditorMode) {
-            switch mode {
-            case .add(let categoryIndex):
-                ContactsManager.shared.addContact(contact, to: categoryIndex, in: &categories)
-                
-                // Check if we just added an emergency contact and have a return path
-                let categoryName = categories[categoryIndex].name
-                if categoryName == "Emergency" && returnToChecklist != nil {
-                    // Added emergency contact - trigger return after a brief delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        if let returnHandler = self.returnToChecklist {
-                            self.dismiss(animated: true) {
-                                returnHandler()
-                            }
+        switch mode {
+        case .add(let categoryIndex):
+            ContactsManager.shared.addContact(contact, to: categoryIndex, in: &categories)
+            
+            // Check if we just added an emergency contact and have a return path
+            let categoryName = categories[categoryIndex].name
+            if categoryName == "Emergency" && returnToChecklist != nil {
+                // Added emergency contact - trigger return after a brief delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    if let returnHandler = self.returnToChecklist {
+                        self.dismiss(animated: true) {
+                            returnHandler()
                         }
                     }
                 }
-                
-            case .edit(_, let indexPath):
-                ContactsManager.shared.updateContact(contact, at: indexPath, in: &categories)
             }
-            tableView.reloadData()
+            
+        case .edit(_, let indexPath):
+            ContactsManager.shared.updateContact(contact, at: indexPath, in: &categories)
         }
-    // MARK: - Multi-Category Selection View Controller
+        tableView.reloadData()
+    }
+}
 
-    class MultiCategorySelectionViewController: UITableViewController {
+// MARK: - Multi-Category Selection View Controller
+class MultiCategorySelectionViewController: UITableViewController {
+    
+    private let categories: [ContactCategory]
+    private var selectedIndices = Set<Int>()
+    private let completion: ([ContactCategory]) -> Void
+    
+    init(categories: [ContactCategory], completion: @escaping ([ContactCategory]) -> Void) {
+        self.categories = categories
+        self.completion = completion
+        super.init(style: .insetGrouped)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
         
-        private let categories: [ContactCategory]
-        private var selectedIndices = Set<Int>()
-        private let completion: ([ContactCategory]) -> Void
+        // Force theme support
+        overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
         
-        init(categories: [ContactCategory], completion: @escaping ([ContactCategory]) -> Void) {
-            self.categories = categories
-            self.completion = completion
-            super.init(style: .insetGrouped)
-        }
+        title = "Select Categories to Export"
         
-        required init?(coder: NSCoder) {
-            fatalError("init(coder:) has not been implemented")
-        }
+        // Apply theme colors
+        view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
         
-        override func viewDidLoad() {
-            super.viewDidLoad()
-            
-            // Force theme support
-            overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
-            
-            title = "Select Categories to Export"
-            
-            // Apply theme colors
-            view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
-            
-            navigationItem.leftBarButtonItem = UIBarButtonItem(
-                title: "Cancel",
-                style: .plain,
-                target: self,
-                action: #selector(cancelTapped)
+        navigationItem.leftBarButtonItem = UIBarButtonItem(
+            title: "Cancel",
+            style: .plain,
+            target: self,
+            action: #selector(cancelTapped)
+        )
+        
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            title: "Export",
+            style: .done,
+            target: self,
+            action: #selector(exportTapped)
+        )
+        
+        // Pre-select all categories
+        selectedIndices = Set(0..<categories.count)
+        
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
+        tableView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+        
+        // Apply navigation bar theme
+        updateNavigationBarTheme()
+    }
+    
+    private func updateNavigationBarTheme() {
+        guard let navigationController = navigationController else { return }
+        ThemeManager.apply(to: navigationController, traitCollection: traitCollection)
+    }
+    
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        
+        // Update theme when switching between light/dark mode
+        overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
+        view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+        tableView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+        updateNavigationBarTheme()
+        tableView.reloadData()
+    }
+    
+    @objc private func cancelTapped() {
+        dismiss(animated: true)
+    }
+    
+    @objc private func exportTapped() {
+        let selectedCategories = selectedIndices.sorted().map { categories[$0] }
+        
+        guard !selectedCategories.isEmpty else {
+            let alert = UIAlertController(
+                title: "No Categories Selected",
+                message: "Please select at least one category to export.",
+                preferredStyle: .alert
             )
-            
-            navigationItem.rightBarButtonItem = UIBarButtonItem(
-                title: "Export",
-                style: .done,
-                target: self,
-                action: #selector(exportTapped)
-            )
-            
-            // Pre-select all categories
-            selectedIndices = Set(0..<categories.count)
-            
-            tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
-            tableView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
-            
-            // Apply navigation bar theme
-            updateNavigationBarTheme()
-        }
-        private func updateNavigationBarTheme() {
-            guard let navigationController = navigationController else { return }
-            ThemeManager.apply(to: navigationController, traitCollection: traitCollection)
-        }
-        override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-            super.traitCollectionDidChange(previousTraitCollection)
-            
-            // Update theme when switching between light/dark mode
-            overrideUserInterfaceStyle = UserDefaults.standard.bool(forKey: "nightMode") ? .dark : .light
-            view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
-            tableView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
-            updateNavigationBarTheme()
-            tableView.reloadData()
-        }
-        @objc private func cancelTapped() {
-            dismiss(animated: true)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
         }
         
-        @objc private func exportTapped() {
-            let selectedCategories = selectedIndices.sorted().map { categories[$0] }
-            
-            guard !selectedCategories.isEmpty else {
-                let alert = UIAlertController(
-                    title: "No Categories Selected",
-                    message: "Please select at least one category to export.",
-                    preferredStyle: .alert
-                )
-                alert.addAction(UIAlertAction(title: "OK", style: .default))
-                present(alert, animated: true)
-                return
-            }
-            
-            dismiss(animated: true) {
-                self.completion(selectedCategories)
-            }
-        }
-        
-        // MARK: - Table View Data Source
-        
-        override func numberOfSections(in tableView: UITableView) -> Int {
-            return 1
-        }
-        
-        override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-            return categories.count
-        }
-        
-        override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-            let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
-            
-            let category = categories[indexPath.row]
-            let contactCount = category.contacts.count
-            
-            cell.textLabel?.text = "\(category.name) (\(contactCount) contacts)"
-            cell.textLabel?.textColor = ThemeManager.titleColor(for: traitCollection)
-            cell.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
-            cell.accessoryType = selectedIndices.contains(indexPath.row) ? .checkmark : .none
-            cell.selectionStyle = .none
-            
-            // Set checkmark color to match theme
-            cell.tintColor = ThemeManager.titleColor(for: traitCollection)
-            
-            return cell
-        }
-        
-        override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-            if selectedIndices.contains(indexPath.row) {
-                selectedIndices.remove(indexPath.row)
-            } else {
-                selectedIndices.insert(indexPath.row)
-            }
-            
-            tableView.reloadRows(at: [indexPath], with: .none)
-        }
-        
-        override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-            return "Select categories to include in export:"
-        }
-        
-        override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-            let totalSelected = selectedIndices.count
-            let totalContacts = selectedIndices.reduce(0) { sum, index in
-                sum + categories[index].contacts.count
-            }
-            
-            return totalSelected > 0 ?
-                "\(totalSelected) categories selected (\(totalContacts) total contacts)" :
-                "No categories selected"
+        dismiss(animated: true) {
+            self.completion(selectedCategories)
         }
     }
+    
+    // MARK: - Table View Data Source
+    
+    override func numberOfSections(in tableView: UITableView) -> Int {
+        return 1
     }
+    
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return categories.count
+    }
+    
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
+        
+        let category = categories[indexPath.row]
+        let contactCount = category.contacts.count
+        
+        cell.textLabel?.text = "\(category.name) (\(contactCount) contacts)"
+        cell.textLabel?.textColor = ThemeManager.titleColor(for: traitCollection)
+        cell.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+        cell.accessoryType = selectedIndices.contains(indexPath.row) ? .checkmark : .none
+        cell.selectionStyle = .none
+        
+        // Set checkmark color to match theme
+        cell.tintColor = ThemeManager.titleColor(for: traitCollection)
+        
+        return cell
+    }
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        if selectedIndices.contains(indexPath.row) {
+            selectedIndices.remove(indexPath.row)
+        } else {
+            selectedIndices.insert(indexPath.row)
+        }
+        
+        tableView.reloadRows(at: [indexPath], with: .none)
+    }
+    
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        return "Select categories to include in export:"
+    }
+    
+    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
+        let totalSelected = selectedIndices.count
+        let totalContacts = selectedIndices.reduce(0) { sum, index in
+            sum + categories[index].contacts.count
+        }
+        
+        return totalSelected > 0 ?
+            "\(totalSelected) categories selected (\(totalContacts) total contacts)" :
+            "No categories selected"
+    }
+}
+
+// MARK: - Custom Section Header View
+class SectionHeaderView: UIView {
+    private let titleButton = UIButton(type: .system)
+    private let dragHandle = UIImageView()
+    private let editButton = UIButton(type: .system)
+    private let lockIcon = UIImageView()
+    
+    var onToggle: (() -> Void)?
+    var onEdit: (() -> Void)?
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupViews()
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    private func setupViews() {
+        // Configure title button
+        titleButton.contentHorizontalAlignment = .left
+        titleButton.titleLabel?.font = .preferredFont(forTextStyle: .headline)
+        titleButton.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        titleButton.titleEdgeInsets = UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 0)
+        titleButton.addTarget(self, action: #selector(toggleTapped), for: .touchUpInside)
+        
+        // Configure drag handle
+        dragHandle.image = UIImage(systemName: "line.3.horizontal")
+        dragHandle.contentMode = .scaleAspectFit
+        
+        // Configure edit button
+        editButton.setImage(UIImage(systemName: "ellipsis.circle"), for: .normal)
+        editButton.addTarget(self, action: #selector(editTapped), for: .touchUpInside)
+        
+        // Configure lock icon
+        lockIcon.image = UIImage(systemName: "lock.fill")
+        lockIcon.contentMode = .scaleAspectFit
+        
+        // Add subviews
+        addSubview(titleButton)
+        addSubview(dragHandle)
+        addSubview(editButton)
+        addSubview(lockIcon)
+        
+        // Setup constraints
+        titleButton.translatesAutoresizingMaskIntoConstraints = false
+        dragHandle.translatesAutoresizingMaskIntoConstraints = false
+        editButton.translatesAutoresizingMaskIntoConstraints = false
+        lockIcon.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+            // Title button
+            titleButton.leadingAnchor.constraint(equalTo: leadingAnchor),
+            titleButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            titleButton.heightAnchor.constraint(equalToConstant: 44),
+            
+            // Edit button (for non-Emergency categories)
+            editButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            editButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            editButton.widthAnchor.constraint(equalToConstant: 30),
+            editButton.heightAnchor.constraint(equalToConstant: 30),
+            
+            // Drag handle (for non-Emergency categories)
+            dragHandle.trailingAnchor.constraint(equalTo: editButton.leadingAnchor, constant: -8),
+            dragHandle.centerYAnchor.constraint(equalTo: centerYAnchor),
+            dragHandle.widthAnchor.constraint(equalToConstant: 24),
+            dragHandle.heightAnchor.constraint(equalToConstant: 24),
+            
+            // Lock icon (for Emergency category only - positioned where drag handle normally is)
+            lockIcon.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -52), // Position where drag handle would be
+            lockIcon.centerYAnchor.constraint(equalTo: centerYAnchor),
+            lockIcon.widthAnchor.constraint(equalToConstant: 16),
+            lockIcon.heightAnchor.constraint(equalToConstant: 16),
+            
+            // Title button trailing constraint
+            titleButton.trailingAnchor.constraint(equalTo: dragHandle.leadingAnchor, constant: -8)
+        ])
+    }
+    
+    func configure(title: String, isExpanded: Bool, isEmergencyCategory: Bool, section: Int, traitCollection: UITraitCollection) {
+        // Set title and chevron
+        let chevron = isExpanded ? "chevron.down" : "chevron.right"
+        titleButton.setTitle(title, for: .normal)
+        titleButton.setImage(UIImage(systemName: chevron), for: .normal)
+        
+        // Set colors
+        let titleColor = ThemeManager.titleColor(for: traitCollection)
+        titleButton.tintColor = titleColor
+        dragHandle.tintColor = titleColor.withAlphaComponent(0.8)
+        editButton.tintColor = titleColor
+        lockIcon.tintColor = titleColor.withAlphaComponent(0.4)
+        
+        // Show/hide elements based on category type
+        if isEmergencyCategory {
+            // Emergency category: show lock, hide drag handle and edit button
+            dragHandle.isHidden = true
+            editButton.isHidden = true
+            lockIcon.isHidden = false
+        } else {
+            // Regular categories: show drag handle and edit button, hide lock
+            dragHandle.isHidden = false
+            editButton.isHidden = false
+            lockIcon.isHidden = true
+        }
+        
+        // Store section for edit action
+        editButton.tag = section
+    }
+    
+    @objc private func toggleTapped() {
+        onToggle?()
+    }
+    
+    @objc private func editTapped() {
+        onEdit?()
+    }
+}

@@ -12,6 +12,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
 
         print("AppDelegate - didFinishLaunchingWithOptions called")
+        UserDefaults.standard.removeObject(forKey: "OperationalContactCategories")
 
         ThemeManager.applyToCurrentWindow()
 

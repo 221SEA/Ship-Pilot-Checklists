@@ -39,7 +39,7 @@ struct ContactCategory: Codable {
     var id: UUID
     var name: String
     var contacts: [OperationalContact]
-    var isSystemCategory: Bool // true for default categories, false for user-created
+    var isSystemCategory: Bool // true for Emergency category only, false for all others
     
     init(name: String, isSystemCategory: Bool = false) {
         self.id = UUID()
@@ -47,6 +47,7 @@ struct ContactCategory: Codable {
         self.contacts = []
         self.isSystemCategory = isSystemCategory
     }
+    
     init(name: String, contacts: [OperationalContact], isSystemCategory: Bool = false) {
         self.id = UUID()
         self.name = name
@@ -62,7 +63,7 @@ class ContactsManager {
     
     private init() {}
     
-    // Default category names - Updated with new categories and order
+    // Default category names - Only Emergency is protected
     static let defaultCategories = [
         "Emergency",
         "Coast Guard",
@@ -79,12 +80,20 @@ class ContactsManager {
         // Try to load saved categories
         if let data = UserDefaults.standard.data(forKey: defaultsKey),
            let saved = try? JSONDecoder().decode([ContactCategory].self, from: data) {
+            
+            // DEBUG: Print what was loaded
+            print("Loaded from UserDefaults:")
+            for category in saved {
+                print("  \(category.name): isSystemCategory = \(category.isSystemCategory)")
+            }
+            
             return saved
         }
         
         // If no saved data, create default categories
-        let defaultCats = Self.defaultCategories.map {
-            ContactCategory(name: $0, isSystemCategory: true)
+        // Only "Emergency" is protected as a system category
+        let defaultCats = Self.defaultCategories.map { categoryName in
+            ContactCategory(name: categoryName, isSystemCategory: categoryName == "Emergency")
         }
         
         // Save the defaults
@@ -105,6 +114,7 @@ class ContactsManager {
         categories.append(newCategory)
         saveCategories(categories)
     }
+    
     // MARK: - Add Category with Contacts
     func addCategory(name: String, contacts: [OperationalContact], to categories: inout [ContactCategory]) {
         let newCategory = ContactCategory(name: name, contacts: contacts, isSystemCategory: false)
@@ -113,11 +123,76 @@ class ContactsManager {
     }
     
     // MARK: - Delete Category
-    func deleteCategory(at index: Int, from categories: inout [ContactCategory]) {
-        // Don't allow deletion of system categories
+    func deleteCategory(at index: Int, from categories: inout [ContactCategory]) -> Bool {
+        // Don't allow deletion of Emergency category
+        guard !categories[index].isSystemCategory else { return false }
+        
+        // Check if category has contacts
+        let category = categories[index]
+        if !category.contacts.isEmpty {
+            // Return false to indicate confirmation needed
+            return false
+        }
+        
+        categories.remove(at: index)
+        saveCategories(categories)
+        return true
+    }
+
+    // MARK: - Force Delete Category (for confirmed deletions)
+    func forceDeleteCategory(at index: Int, from categories: inout [ContactCategory]) {
+        // Don't allow deletion of Emergency category
         guard !categories[index].isSystemCategory else { return }
         categories.remove(at: index)
         saveCategories(categories)
+    }
+
+    // MARK: - Move Category
+    func moveCategory(from sourceIndex: Int, to destinationIndex: Int, in categories: inout [ContactCategory]) {
+        let sourceCategory = categories[sourceIndex]
+        let destinationCategory = categories[destinationIndex]
+        
+        // Don't allow moving the Emergency category
+        guard !sourceCategory.isSystemCategory else { return }
+        
+        // Don't allow non-Emergency categories to move into Emergency position if Emergency is there
+        if destinationCategory.isSystemCategory {
+            return
+        }
+        
+        let category = categories.remove(at: sourceIndex)
+        categories.insert(category, at: destinationIndex)
+        saveCategories(categories)
+    }
+
+    // MARK: - Check if Category Can Be Deleted
+    func canDeleteCategory(at index: Int, in categories: [ContactCategory]) -> (canDelete: Bool, reason: String?) {
+        let category = categories[index]
+        
+        if category.isSystemCategory {
+            return (false, "The Emergency category cannot be deleted as it's required for the SMS feature")
+        }
+        
+        if !category.contacts.isEmpty {
+            let contactCount = category.contacts.count
+            let message = contactCount == 1 ?
+                "This category contains 1 contact. Delete anyway?" :
+                "This category contains \(contactCount) contacts. Delete anyway?"
+            return (false, message)
+        }
+        
+        return (true, nil)
+    }
+
+    // MARK: - Check if Category Can Be Renamed
+    func canRenameCategory(at index: Int, in categories: [ContactCategory]) -> (canRename: Bool, reason: String?) {
+        let category = categories[index]
+        
+        if category.isSystemCategory {
+            return (false, "The Emergency category cannot be renamed as it's required for the SMS feature")
+        }
+        
+        return (true, nil)
     }
     
     // MARK: - Bulk Add Contacts
@@ -130,6 +205,7 @@ class ContactsManager {
         }
         saveCategories(categories)
     }
+    
     // MARK: - Add Contact
     func addContact(_ contact: OperationalContact, to categoryIndex: Int, in categories: inout [ContactCategory]) {
         categories[categoryIndex].contacts.append(contact)
