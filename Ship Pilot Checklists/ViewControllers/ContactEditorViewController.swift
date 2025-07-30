@@ -62,6 +62,17 @@ class ContactEditorViewController: UIViewController, CNContactPickerDelegate {
         setupKeyboardObservers()
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // FORCE navigation bar to be visible
+        navigationController?.setNavigationBarHidden(false, animated: false)
+        navigationController?.navigationBar.isHidden = false
+        
+        // Ensure navigation bar styling is applied
+        updateNavigationBarTheme()
+    }
+    
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         // Auto-focus on name field for new contacts
@@ -73,6 +84,7 @@ class ContactEditorViewController: UIViewController, CNContactPickerDelegate {
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         updateTheme()
+        updateNavigationBarTheme()
     }
     
     // MARK: - Setup
@@ -93,9 +105,13 @@ class ContactEditorViewController: UIViewController, CNContactPickerDelegate {
         setupNavigationBar()
         setupTableView()
         updateTheme()
+        updateNavigationBarTheme()
     }
     
     private func setupNavigationBar() {
+        // ENSURE navigation bar is shown
+        navigationController?.setNavigationBarHidden(false, animated: false)
+        
         navigationItem.leftBarButtonItem = UIBarButtonItem(
             barButtonSystemItem: .cancel,
             target: self,
@@ -110,6 +126,39 @@ class ContactEditorViewController: UIViewController, CNContactPickerDelegate {
         
         // Disable save until we have required fields
         updateSaveButtonState()
+    }
+    
+    private func updateNavigationBarTheme() {
+        guard let navigationController = navigationController else { return }
+        
+        // Apply theme to navigation controller
+        ThemeManager.apply(to: navigationController, traitCollection: traitCollection)
+        
+        // EXPLICIT button color setup based on theme
+        let buttonColor = ThemeManager.navBarForegroundColor(for: traitCollection)
+        
+        // Set button colors explicitly
+        navigationItem.leftBarButtonItem?.tintColor = buttonColor
+        navigationItem.rightBarButtonItem?.tintColor = buttonColor
+        
+        // Force navigation bar to be visible and properly styled
+        navigationController.navigationBar.isHidden = false
+        navigationController.setNavigationBarHidden(false, animated: false)
+        
+        // ADDITIONAL: Ensure navigation bar itself has proper styling
+        let appearance = ThemeManager.navBarAppearance(for: traitCollection)
+        navigationController.navigationBar.standardAppearance = appearance
+        navigationController.navigationBar.scrollEdgeAppearance = appearance
+        navigationController.navigationBar.compactAppearance = appearance
+        navigationController.navigationBar.compactScrollEdgeAppearance = appearance
+        
+        // Force navigation bar tint color
+        navigationController.navigationBar.tintColor = buttonColor
+        
+        print("Navigation bar theme updated - button color: \(buttonColor)")
+        print("Left button: \(navigationItem.leftBarButtonItem != nil)")
+        print("Right button: \(navigationItem.rightBarButtonItem != nil)")
+        print("Nav bar hidden: \(navigationController.navigationBar.isHidden)")
     }
     
     private func setupTableView() {
@@ -129,11 +178,6 @@ class ContactEditorViewController: UIViewController, CNContactPickerDelegate {
     private func updateTheme() {
         view.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
         tableView.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
-        
-        // Update navigation bar buttons
-        let tintColor = ThemeManager.titleColor(for: traitCollection)
-        navigationItem.leftBarButtonItem?.tintColor = tintColor
-        navigationItem.rightBarButtonItem?.tintColor = tintColor
     }
     
     // MARK: - Keyboard Handling
@@ -185,16 +229,36 @@ class ContactEditorViewController: UIViewController, CNContactPickerDelegate {
     }
     
     private func updateSaveButtonState() {
+        // Ensure we have navigation buttons first
+        if navigationItem.leftBarButtonItem == nil {
+            navigationItem.leftBarButtonItem = UIBarButtonItem(
+                barButtonSystemItem: .cancel,
+                target: self,
+                action: #selector(cancelTapped)
+            )
+        }
+        
+        if navigationItem.rightBarButtonItem == nil {
+            navigationItem.rightBarButtonItem = UIBarButtonItem(
+                barButtonSystemItem: .save,
+                target: self,
+                action: #selector(saveTapped)
+            )
+        }
+        
+        // Get the current field values
         let hasName = !(nameField?.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         let hasPhone = !(phoneField?.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         
-        // For edit mode, if we have valid existing data, enable save button
-        // For add mode, require both name and phone to be filled
+        // For imported contacts, we know they should have valid data
+        let hasImportedData = importedContact != nil
+        
         let shouldEnable: Bool
         
         switch mode {
         case .add:
-            shouldEnable = hasName && hasPhone
+            // For adding, enable if we have name and phone, OR if we have imported data
+            shouldEnable = (hasName && hasPhone) || hasImportedData
         case .edit:
             // For editing, we know the contact already has valid data
             // So save should be enabled as long as required fields aren't empty
@@ -202,6 +266,16 @@ class ContactEditorViewController: UIViewController, CNContactPickerDelegate {
         }
         
         navigationItem.rightBarButtonItem?.isEnabled = shouldEnable
+        
+        // Apply correct colors to buttons
+        let buttonColor = ThemeManager.navBarForegroundColor(for: traitCollection)
+        navigationItem.leftBarButtonItem?.tintColor = buttonColor
+        navigationItem.rightBarButtonItem?.tintColor = buttonColor
+        
+        print("Save button enabled: \(shouldEnable), hasName: \(hasName), hasPhone: \(hasPhone), hasImported: \(hasImportedData)")
+        print("Button color: \(buttonColor)")
+        print("Left button exists: \(navigationItem.leftBarButtonItem != nil)")
+        print("Right button exists: \(navigationItem.rightBarButtonItem != nil)")
     }
     
     // MARK: - Actions
@@ -265,6 +339,7 @@ class ContactEditorViewController: UIViewController, CNContactPickerDelegate {
         
         present(picker, animated: true)
     }
+    
     // MARK: - CNContactPickerDelegate
     
     func contactPicker(_ picker: CNContactPickerViewController, didSelect contact: CNContact) {
@@ -276,14 +351,33 @@ class ContactEditorViewController: UIViewController, CNContactPickerDelegate {
         // Reload the table to display the new data
         self.tableView.reloadData()
         
-        // Update save button state after a brief delay to ensure fields are created
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        // Update save button state after a brief delay to ensure fields are created and populated
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             self.updateSaveButtonState()
+            
+            // Also force enable the save button since we know we have valid imported data
+            self.navigationItem.rightBarButtonItem?.isEnabled = true
+            
+            // Show user feedback that import was successful
+            self.showImportSuccessMessage()
         }
     }
 
     func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
         // User cancelled - nothing to do
+    }
+    
+    private func showImportSuccessMessage() {
+        // Create a brief visual indication that import was successful
+        let alertController = UIAlertController(
+            title: "Contact Imported",
+            message: "Contact information has been imported. Tap Save to add this contact.",
+            preferredStyle: .alert
+        )
+        
+        alertController.addAction(UIAlertAction(title: "OK", style: .default))
+        
+        present(alertController, animated: true)
     }
     
     private func showAlert(title: String, message: String) {
@@ -543,5 +637,3 @@ extension ContactEditorViewController: UITextViewDelegate {
         // Notes are optional, no need to update save button
     }
 }
-
-
