@@ -26,8 +26,12 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
     var openToEmergencyCategory = false
     var returnToChecklist: (() -> Void)?
     
-    // Section drag properties - SIMPLIFIED
+    // Section drag properties - ENHANCED
     private var isDraggingSections = false
+    private var draggedSectionIndex: Int?
+    private var sectionLongPressGesture: UILongPressGestureRecognizer?
+    private var draggedHeaderView: UIView?
+    private var placeholderView: UIView?
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -207,12 +211,13 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
 
         let flexible = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
 
+        // UPDATED: Shortened button text to prevent truncation
         bottomToolbar.items = [
-            toolbarButton(title: "Multiple\nImport", action: #selector(importContactsTapped)),
+            toolbarButton(title: "Add\nContact", action: #selector(addContactTapped)),
             flexible,
-            toolbarButton(title: "Batch\nExport", action: #selector(exportAllContactsTapped)),
+            toolbarButton(title: "Batch Add\nContacts", action: #selector(importContactsTapped)),
             flexible,
-            toolbarButton(title: "Add Single\nContact", action: #selector(addContactTapped)),
+            toolbarButton(title: "Export\nContacts", action: #selector(exportAllContactsTapped)),
             flexible,
             toolbarButton(title: "Add\nCategory", action: #selector(addCategoryTapped))
         ]
@@ -264,12 +269,19 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         }
     }
     
-    // MARK: - Section Reordering (Simplified Approach)
+    // MARK: - Section Reordering (ENHANCED Visual Drag and Drop)
     private func setupSectionReordering() {
+        // Remove old gesture if it exists
+        if let oldGesture = sectionLongPressGesture {
+            tableView.removeGestureRecognizer(oldGesture)
+        }
+        
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleSectionLongPress(_:)))
         longPress.minimumPressDuration = 0.6
+        longPress.delegate = self
         tableView.addGestureRecognizer(longPress)
-        print("Section reordering gesture added")
+        sectionLongPressGesture = longPress
+        print("Enhanced section reordering gesture added")
     }
     
     @objc private func handleSectionLongPress(_ gesture: UILongPressGestureRecognizer) {
@@ -277,15 +289,17 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         
         switch gesture.state {
         case .began:
-            startSectionReorderingMode(at: location)
+            startSectionDrag(at: location, gesture: gesture)
+        case .changed:
+            updateSectionDrag(to: gesture.location(in: tableView), gesture: gesture)
         case .ended, .cancelled:
-            endSectionReorderingMode()
+            endSectionDrag(gesture: gesture)
         default:
             break
         }
     }
     
-    private func startSectionReorderingMode(at location: CGPoint) {
+    private func startSectionDrag(at location: CGPoint, gesture: UILongPressGestureRecognizer) {
         // Find which section header was pressed
         for section in 0..<categories.count {
             let headerRect = tableView.rectForHeader(inSection: section)
@@ -293,80 +307,251 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
                 let category = categories[section]
                 
                 // Don't allow reordering Emergency category
-                guard category.name != "Emergency" else {
-                    showReorderingHint("Emergency category cannot be moved")
+                guard !category.isSystemCategory else {
+                    showFeedback("Emergency category cannot be moved")
                     return
                 }
                 
-                print("Starting section reordering mode for: \(category.name)")
-                impactFeedback.impactOccurred()
-                showReorderingInstructions(for: category.name)
+                startDraggingSection(section, at: location, gesture: gesture)
                 return
             }
         }
     }
     
-    private func endSectionReorderingMode() {
-        isDraggingSections = false
-    }
-    
-    private func showReorderingInstructions(for categoryName: String) {
-        let alert = UIAlertController(
-            title: "Reorder \(categoryName)",
-            message: "Choose where to move this category:",
-            preferredStyle: .actionSheet
-        )
+    private func startDraggingSection(_ section: Int, at location: CGPoint, gesture: UILongPressGestureRecognizer) {
+        print("Starting visual drag for section: \(section)")
         
-        // Find current position
-        guard let currentIndex = categories.firstIndex(where: { $0.name == categoryName }) else { return }
+        // Set drag state first
+        isDraggingSections = true
+        draggedSectionIndex = section
         
-        // Add options for each valid position
-        for (index, category) in categories.enumerated() {
-            if index == currentIndex { continue }
-            if category.name == "Emergency" { continue } // Can't move before/after Emergency
-            
-            let title = index < currentIndex ? "Move before \(category.name)" : "Move after \(category.name)"
-            
-            alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
-                self?.moveCategoryFromIndex(currentIndex, toIndex: index)
-            })
+        // Haptic feedback
+        impactFeedback.impactOccurred()
+        
+        // Create dragged header view
+        createDraggedHeaderView(for: section, at: location)
+        
+        // Only proceed if we successfully created the dragged header
+        guard draggedHeaderView != nil else {
+            print("Failed to create dragged header view, aborting drag")
+            cleanupDragViews()
+            return
         }
         
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        // Create placeholder view
+        createPlaceholderView(for: section)
         
-        // iPad support - FIXED
-        if let popover = alert.popoverPresentationController {
-            popover.sourceView = tableView
-            if let headerView = tableView.headerView(forSection: currentIndex) {
-                popover.sourceRect = headerView.frame
-            } else {
-                popover.sourceRect = CGRect(x: tableView.bounds.midX, y: tableView.bounds.midY, width: 0, height: 0)
+        // Start the drag animation
+        UIView.animate(withDuration: 0.2) {
+            self.draggedHeaderView?.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
+            self.draggedHeaderView?.alpha = 0.9
+            self.tableView.alpha = 0.8
+        }
+        
+        print("Drag setup complete - isDraggingSections: \(isDraggingSections)")
+    }
+    
+    private func createDraggedHeaderView(for section: Int, at location: CGPoint) {
+        // Instead of trying to get the existing header, create a new one directly
+        let draggedHeader = SectionHeaderView()
+        let category = categories[section]
+        let isExpanded = expandedSections.contains(section)
+        
+        draggedHeader.configure(
+            title: category.name,
+            isExpanded: isExpanded,
+            isEmergencyCategory: false, // We know it's not Emergency since we checked earlier
+            section: section,
+            traitCollection: traitCollection
+        )
+        
+        // Style the dragged header
+        draggedHeader.backgroundColor = ThemeManager.backgroundColor(for: traitCollection)
+        draggedHeader.layer.cornerRadius = 8
+        draggedHeader.layer.shadowColor = UIColor.black.cgColor
+        draggedHeader.layer.shadowOffset = CGSize(width: 0, height: 4)
+        draggedHeader.layer.shadowOpacity = 0.3
+        draggedHeader.layer.shadowRadius = 8
+        
+        // Position it - get header rect and convert to view coordinates
+        let headerRect = tableView.rectForHeader(inSection: section)
+        let convertedRect = tableView.convert(headerRect, to: view)
+        draggedHeader.frame = convertedRect
+        
+        // Add to view hierarchy
+        view.addSubview(draggedHeader)
+        draggedHeaderView = draggedHeader
+        
+        print("Created dragged header at: \(convertedRect)")
+    }
+    
+    private func createPlaceholderView(for section: Int) {
+        let placeholder = UIView()
+        placeholder.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.3)
+        placeholder.layer.cornerRadius = 4
+        placeholder.layer.borderWidth = 2
+        placeholder.layer.borderColor = UIColor.systemBlue.cgColor
+        
+        let headerRect = tableView.rectForHeader(inSection: section)
+        placeholder.frame = headerRect
+        
+        tableView.addSubview(placeholder)
+        placeholderView = placeholder
+        
+        print("Created placeholder at: \(headerRect)")
+    }
+    
+    private func updateSectionDrag(to location: CGPoint, gesture: UILongPressGestureRecognizer) {
+        guard isDraggingSections,
+              let draggedHeader = draggedHeaderView,
+              let placeholder = placeholderView,
+              let draggedSection = draggedSectionIndex else {
+            print("updateSectionDrag called but not in dragging state - isDragging: \(isDraggingSections), header: \(draggedHeaderView != nil), placeholder: \(placeholderView != nil), section: \(draggedSectionIndex ?? -1)")
+            return
+        }
+        
+        // Convert location from tableView to view coordinates for dragged header
+        let viewLocation = tableView.convert(location, to: view)
+        
+        // Update dragged header position
+        draggedHeader.center = CGPoint(x: draggedHeader.center.x, y: viewLocation.y)
+        
+        // Find which section we're over
+        var targetSection: Int?
+        
+        for section in 0..<categories.count {
+            let headerRect = tableView.rectForHeader(inSection: section)
+            let expandedRect = CGRect(
+                x: headerRect.minX,
+                y: headerRect.minY - 22, // Half the header height for better feel
+                width: headerRect.width,
+                height: headerRect.height + 44 // Full header height buffer
+            )
+            
+            if expandedRect.contains(location) {
+                // Don't allow dropping on Emergency category or same section
+                if !categories[section].isSystemCategory && section != draggedSection {
+                    targetSection = section
+                    break
+                }
             }
         }
         
-        present(alert, animated: true)
+        // Update placeholder position
+        if let target = targetSection {
+            let targetHeaderRect = tableView.rectForHeader(inSection: target)
+            
+            UIView.animate(withDuration: 0.15) {
+                placeholder.frame = targetHeaderRect
+                placeholder.alpha = 0.8
+            }
+        } else {
+            // Fade out placeholder when not over valid target
+            UIView.animate(withDuration: 0.15) {
+                placeholder.alpha = 0.3
+            }
+        }
     }
     
-    private func moveCategoryFromIndex(_ fromIndex: Int, toIndex: Int) {
-        let actualToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex
+    private func endSectionDrag(gesture: UILongPressGestureRecognizer) {
+        guard isDraggingSections,
+              let draggedSection = draggedSectionIndex,
+              let draggedHeader = draggedHeaderView else {
+            cleanupDragViews()
+            return
+        }
+        
+        // Find target section
+        let location = gesture.location(in: tableView)
+        var targetSection: Int?
+        
+        for section in 0..<categories.count {
+            let headerRect = tableView.rectForHeader(inSection: section)
+            let expandedRect = CGRect(
+                x: headerRect.minX,
+                y: headerRect.minY - 22,
+                width: headerRect.width,
+                height: headerRect.height + 44
+            )
+            
+            if expandedRect.contains(location) && !categories[section].isSystemCategory && section != draggedSection {
+                targetSection = section
+                break
+            }
+        }
+        
+        if let target = targetSection {
+            // Perform the move
+            performSectionMove(from: draggedSection, to: target)
+            
+            // Animate to final position
+            let finalHeaderRect = tableView.rectForHeader(inSection: target < draggedSection ? target : target - 1)
+            let convertedFinalRect = tableView.convert(finalHeaderRect, to: view)
+            
+            UIView.animate(withDuration: 0.3, animations: {
+                draggedHeader.frame = convertedFinalRect
+                draggedHeader.transform = .identity
+                draggedHeader.alpha = 1.0
+                self.tableView.alpha = 1.0
+            }) { _ in
+                self.cleanupDragViews()
+            }
+        } else {
+            // Animate back to original position
+            let originalHeaderRect = tableView.rectForHeader(inSection: draggedSection)
+            let convertedOriginalRect = tableView.convert(originalHeaderRect, to: view)
+            
+            UIView.animate(withDuration: 0.3, animations: {
+                draggedHeader.frame = convertedOriginalRect
+                draggedHeader.transform = .identity
+                draggedHeader.alpha = 1.0
+                self.tableView.alpha = 1.0
+            }) { _ in
+                self.cleanupDragViews()
+            }
+            
+            showFeedback("Drop on another category to move")
+        }
+    }
+    
+    private func performSectionMove(from source: Int, to destination: Int) {
+        let actualDestination = source < destination ? destination - 1 : destination
         
         tableView.performBatchUpdates({
             // Move in data model
-            let movedCategory = categories.remove(at: fromIndex)
-            categories.insert(movedCategory, at: actualToIndex)
+            let movedCategory = categories.remove(at: source)
+            categories.insert(movedCategory, at: actualDestination)
             
             // Save changes
             ContactsManager.shared.saveCategories(categories)
             
             // Update expanded sections tracking
-            updateExpandedSectionsAfterMove(from: fromIndex, to: actualToIndex)
+            updateExpandedSectionsAfterMove(from: source, to: actualDestination)
             
             // Move in table view
-            tableView.moveSection(fromIndex, toSection: actualToIndex)
+            tableView.moveSection(source, toSection: actualDestination)
         })
         
         impactFeedback.impactOccurred()
-        print("Moved category from \(fromIndex) to \(actualToIndex)")
+        showFeedback("Category moved successfully")
+        print("Moved category from \(source) to \(actualDestination)")
+    }
+    
+    private func cleanupDragViews() {
+        print("Cleaning up drag views - isDragging: \(isDraggingSections)")
+        
+        isDraggingSections = false
+        draggedSectionIndex = nil
+        
+        draggedHeaderView?.removeFromSuperview()
+        draggedHeaderView = nil
+        
+        placeholderView?.removeFromSuperview()
+        placeholderView = nil
+        
+        tableView.alpha = 1.0
+        
+        print("Drag cleanup complete")
     }
     
     private func updateExpandedSectionsAfterMove(from: Int, to: Int) {
@@ -398,10 +583,37 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         expandedSections = newExpandedSections
     }
     
-    private func showReorderingHint(_ message: String) {
-        let alert = UIAlertController(title: "Cannot Reorder", message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+    private func showFeedback(_ message: String) {
+        // Create a simple toast-like feedback
+        let label = UILabel()
+        label.text = message
+        label.textAlignment = .center
+        label.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+        label.textColor = .white
+        label.font = .systemFont(ofSize: 14, weight: .medium)
+        label.layer.cornerRadius = 8
+        label.clipsToBounds = true
+        label.alpha = 0
+        
+        view.addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            label.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            label.widthAnchor.constraint(lessThanOrEqualToConstant: 250),
+            label.heightAnchor.constraint(equalToConstant: 40)
+        ])
+        
+        UIView.animate(withDuration: 0.3, animations: {
+            label.alpha = 1.0
+        }) { _ in
+            UIView.animate(withDuration: 0.3, delay: 1.5, animations: {
+                label.alpha = 0
+            }) { _ in
+                label.removeFromSuperview()
+            }
+        }
     }
     
     // MARK: - Data
@@ -671,9 +883,14 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         let tap = UITapGestureRecognizer(target: self, action: action)
         label.addGestureRecognizer(tap)
 
-        // Constrain width to keep spacing consistent
-        let widthConstraint = label.widthAnchor.constraint(equalToConstant: 70)
-        widthConstraint.isActive = true
+        // Use flexible width constraints instead of fixed width
+        label.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        
+        // Set minimum width but allow flexibility
+        let minWidthConstraint = label.widthAnchor.constraint(greaterThanOrEqualToConstant: 60)
+        minWidthConstraint.priority = .defaultHigh
+        minWidthConstraint.isActive = true
 
         return UIBarButtonItem(customView: label)
     }
@@ -720,7 +937,7 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         present(alert, animated: true)
     }
     
-    // MARK: - FIXED: Category Editing Methods
+    // MARK: - Category Editing Methods
     private func editCategoryTapped(at section: Int) {
         let category = categories[section]
         
@@ -840,6 +1057,42 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         })
         
         present(alert, animated: true)
+    }
+}
+
+// MARK: - UIGestureRecognizerDelegate
+extension ContactsViewController: UIGestureRecognizerDelegate {
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Don't allow simultaneous recognition with table view gestures during section drag
+        if gestureRecognizer == sectionLongPressGesture {
+            return false
+        }
+        return false
+    }
+    
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Only begin if we're not already dragging and not searching
+        if gestureRecognizer == sectionLongPressGesture {
+            return !isDraggingSections && !isSearching
+        }
+        return true
+    }
+    
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        // For section drag gesture, only respond to touches in header areas
+        if gestureRecognizer == sectionLongPressGesture {
+            let location = touch.location(in: tableView)
+            
+            // Check if touch is in any section header
+            for section in 0..<categories.count {
+                let headerRect = tableView.rectForHeader(inSection: section)
+                if headerRect.contains(location) {
+                    return true
+                }
+            }
+            return false
+        }
+        return true
     }
 }
 
@@ -1062,12 +1315,12 @@ extension ContactsViewController: UITableViewDelegate {
     }
 }
 
-// MARK: - Drag & Drop
+// MARK: - Drag & Drop (for contacts only)
 extension ContactsViewController: UITableViewDragDelegate, UITableViewDropDelegate {
     
     // MARK: - Drag Delegate Methods
     func tableView(_ tableView: UITableView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
-        guard !isSearching else { return [] }
+        guard !isSearching && !isDraggingSections else { return [] }
         
         // Don't allow dragging from collapsed sections
         guard expandedSections.contains(indexPath.section) else { return [] }
@@ -1081,7 +1334,11 @@ extension ContactsViewController: UITableViewDragDelegate, UITableViewDropDelega
     
     // MARK: - Drop Delegate Methods (for contact reordering only)
     func tableView(_ tableView: UITableView, dropSessionDidUpdate session: UIDropSession, withDestinationIndexPath destinationIndexPath: IndexPath?) -> UITableViewDropProposal {
-        // For contact drops, use existing logic
+        // Don't allow drops during section dragging
+        guard !isDraggingSections else {
+            return UITableViewDropProposal(operation: .forbidden)
+        }
+        
         // Don't allow drops in collapsed sections
         if let dest = destinationIndexPath, !expandedSections.contains(dest.section) {
             return UITableViewDropProposal(operation: .forbidden)
@@ -1105,23 +1362,29 @@ extension ContactsViewController: UITableViewDragDelegate, UITableViewDropDelega
     
     // MARK: - Enhanced Drop Session Handling
     func tableView(_ tableView: UITableView, canHandle session: UIDropSession) -> Bool {
-        // We can handle contact drags
-        return session.hasItemsConforming(toTypeIdentifiers: [UTType.text.identifier])
+        // We can handle contact drags only when not dragging sections
+        return !isDraggingSections && session.hasItemsConforming(toTypeIdentifiers: [UTType.text.identifier])
     }
     
     func tableView(_ tableView: UITableView, dropSessionDidEnter session: UIDropSession) {
         // Provide visual feedback when drag enters the table view
-        tableView.alpha = 0.9
+        if !isDraggingSections {
+            tableView.alpha = 0.9
+        }
     }
     
     func tableView(_ tableView: UITableView, dropSessionDidExit session: UIDropSession) {
         // Remove visual feedback when drag exits
-        tableView.alpha = 1.0
+        if !isDraggingSections {
+            tableView.alpha = 1.0
+        }
     }
     
     func tableView(_ tableView: UITableView, dropSessionDidEnd session: UIDropSession) {
         // Ensure we reset visual state
-        tableView.alpha = 1.0
+        if !isDraggingSections {
+            tableView.alpha = 1.0
+        }
     }
 }
 
