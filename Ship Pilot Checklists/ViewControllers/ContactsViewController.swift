@@ -728,6 +728,8 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         present(nav, animated: true)
     }
     
+    // Replace the export method in ContactsViewController.swift with this:
+
     private func export(categories: [ContactCategory], suggestedFileName: String) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
@@ -737,8 +739,12 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
             return
         }
 
+        // Use JSON extension for universal compatibility
+        let baseFileName = suggestedFileName.replacingOccurrences(of: ".shipcontacts", with: "")
+        let jsonFileName = "\(baseFileName).json"
+        
         // Save to temporary file
-        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent(suggestedFileName)
+        let fileURL = FileManager.default.temporaryDirectory.appendingPathComponent(jsonFileName)
 
         do {
             try data.write(to: fileURL)
@@ -747,20 +753,24 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
             return
         }
 
-        // Create custom subject for email sharing
+        // Enhanced sharing with clear instructions
         let activityVC = UIActivityViewController(
             activityItems: [
-                fileURL, // Main file
-                "Exported contacts from Ship Pilot Checklists" // This becomes email body or AirDrop context
+                fileURL,
+                "Ship Pilot Contacts Export\n\n📋 This file contains contacts from Ship Pilot Checklists app.\n\n📱 To import on another device:\n1. Save this file\n2. Open Ship Pilot Checklists app\n3. File will auto-import when opened\n\n💡 You can also share this file from the Files app directly to Ship Pilot Checklists."
             ],
             applicationActivities: nil
         )
 
-        activityVC.setValue("Ship Pilot Checklists Contacts Export", forKey: "subject") // For Mail
+        // Set email subject
+        activityVC.setValue("Ship Pilot Contacts - \(baseFileName)", forKey: "subject")
 
-        activityVC.completionWithItemsHandler = { [weak self] _, completed, _, _ in
-            if completed {
-                self?.showAlert(title: "Export Complete", message: "Contacts exported successfully.")
+        activityVC.completionWithItemsHandler = { [weak self] activity, completed, _, error in
+            if let error = error {
+                print("Share error: \(error)")
+                self?.showAlert(title: "Share Failed", message: error.localizedDescription)
+            } else if completed {
+                self?.showAlert(title: "Export Complete", message: "Contacts exported as JSON file for universal compatibility.")
             }
         }
 

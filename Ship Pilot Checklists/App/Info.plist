@@ -4,6 +4,8 @@
 <dict>
     <key>LSSupportsOpeningDocumentsInPlace</key>
     <true/>
+    <key>UIFileSharingEnabled</key>
+    <true/>
     <key>NSCameraUsageDescription</key>
     <string>The app needs to use your camera to attach photos to checklist items. Four photos per item.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
@@ -33,59 +35,91 @@
             </array>
         </dict>
     </dict>
+    
+   
+
     <key>CFBundleDocumentTypes</key>
     <array>
+        <!-- Ship Pilot Checklist (keep this for backwards compatibility) -->
         <dict>
             <key>CFBundleTypeName</key>
             <string>Ship Pilot Checklist</string>
+            <key>CFBundleTypeDescription</key>
+            <string>Ship Pilot Checklist File</string>
             <key>CFBundleTypeIconFiles</key>
             <array/>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>shipchecklist</string>
+            </array>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
             <key>LSItemContentTypes</key>
             <array>
                 <string>com.JillRussell.Ship-Pilot-Checklists.shipchecklist</string>
+            </array>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+        </dict>
+        
+        <!-- JSON Files (for contacts and universal compatibility) -->
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>JSON File</string>
+            <key>CFBundleTypeDescription</key>
+            <string>JavaScript Object Notation File</string>
+            <key>CFBundleTypeIconFiles</key>
+            <array/>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>json</string>
+            </array>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSItemContentTypes</key>
+            <array>
                 <string>public.json</string>
             </array>
             <key>LSHandlerRank</key>
-            <string>Owner</string>
+            <string>Alternate</string>
         </dict>
-        <dict>
-            <key>CFBundleTypeName</key>
-            <string>Ship Pilot Contacts</string>
-            <key>CFBundleTypeRole</key>
-            <string>Editor</string>
-            <key>LSHandlerRank</key>
-            <string>Owner</string>
-            <key>LSItemContentTypes</key>
-            <array>
-                <string>com.JillRussell.Ship-Pilot-Checklists.shipcontacts</string>
-            </array>
-        </dict>
+        
+        <!-- CSV Files -->
         <dict>
             <key>CFBundleTypeName</key>
             <string>CSV File</string>
+            <key>CFBundleTypeDescription</key>
+            <string>Comma Separated Values File</string>
+            <key>CFBundleTypeIconFiles</key>
+            <array/>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>csv</string>
+            </array>
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
-            <key>LSHandlerRank</key>
-            <string>Owner</string>
             <key>LSItemContentTypes</key>
             <array>
                 <string>public.comma-separated-values-text</string>
             </array>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
         </dict>
     </array>
+
+    <!-- Simplified UTExportedTypeDeclarations (remove shipcontacts, keep shipchecklist for backwards compatibility) -->
     <key>UTExportedTypeDeclarations</key>
     <array>
         <dict>
             <key>UTTypeIdentifier</key>
             <string>com.JillRussell.Ship-Pilot-Checklists.shipchecklist</string>
-            <key>UTTypeReferenceURL</key>
-            <string>https://example.com/shipchecklist</string>
             <key>UTTypeDescription</key>
             <string>Ship Pilot Checklist</string>
             <key>UTTypeConformsTo</key>
             <array>
                 <string>public.data</string>
                 <string>public.content</string>
+                <string>public.composite-content</string>
             </array>
             <key>UTTypeTagSpecification</key>
             <dict>
@@ -96,32 +130,13 @@
                 <key>public.mime-type</key>
                 <array>
                     <string>application/x-shipchecklist</string>
-                </array>
-            </dict>
-        </dict>
-        <dict>
-            <key>UTTypeIdentifier</key>
-            <string>com.JillRussell.Ship-Pilot-Checklists.shipcontacts</string>
-            <key>UTTypeDescription</key>
-            <string>Ship Pilot Contacts</string>
-            <key>UTTypeConformsTo</key>
-            <array>
-                <string>public.data</string>
-                <string>public.content</string>
-            </array>
-            <key>UTTypeTagSpecification</key>
-            <dict>
-                <key>public.filename-extension</key>
-                <array>
-                    <string>shipcontacts</string>
-                </array>
-                <key>public.mime-type</key>
-                <array>
-                    <string>application/x-shipcontacts</string>
+                    <string>application/json</string>
                 </array>
             </dict>
         </dict>
     </array>
+    
+    <!-- Keep your existing UTImportedTypeDeclarations -->
     <key>UTImportedTypeDeclarations</key>
     <array>
         <dict>
