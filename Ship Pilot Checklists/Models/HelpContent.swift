@@ -17,7 +17,7 @@ struct HelpContent {
     ]
     
     // MARK: - Quick Start Category
-    
+
     static let quickStartCategory = HelpCategory(
         id: "quickstart",
         title: "Quick Start Guide",
@@ -40,6 +40,9 @@ struct HelpContent {
                 • Complete offline functionality (except tide/wind data)
                 
                 The app works entirely offline, making it reliable in areas with poor connectivity. Only tide and wind data features require internet access.
+                
+                📱 Important File Import Tip:
+                When receiving .json or .csv files through messaging apps (Signal, iMessage, WhatsApp), you'll need to save them to the Files app first, then share to Ship Pilot Checklists. This extra step is required due to iOS security. See Import & Export help section for details.
                 """
             ),
             HelpTopic(
@@ -114,6 +117,44 @@ struct HelpContent {
                 • Voice recording (microphone icon)
                 • PDF generation (document icon)
                 • Clear checklist (eraser icon)
+                """
+            ),
+            HelpTopic(
+                id: "quick_tips_essentials",
+                title: "Essential Tips for New Users",
+                content: "Key tips to get the most out of Ship Pilot Checklists from day one. Save time and avoid common issues with these essential practices.",
+                screenshot: UIImage(named: "help_quick_tips"),
+                detailedContent: """
+                🌟 Top 5 Tips for New Users:
+                
+                1. 📱 File Import Tip:
+                When teammates share .json or .csv files via messaging apps:
+                • Save the file to your Files app first
+                • Then share it to Ship Pilot Checklists
+                • Direct imports from messaging apps often fail
+                • This works 100% of the time
+                
+                2. ⭐ Use Favorites:
+                • Star your most-used checklists for instant access
+                • Critical during emergencies when seconds count
+                • Access all favorites from the main menu
+                
+                3. 📸 Document Everything:
+                • Take photos during incidents for evidence
+                • Add notes to specific checklist items
+                • Generate PDFs before clearing checklists
+                
+                4. 🚨 Set Up Emergency Contacts First:
+                • Add Coast Guard, dispatch, and company contacts
+                • Test the Emergency SMS feature during drills
+                • Keep VHF channels updated
+                
+                5. 🌙 Use Night Mode on the Bridge:
+                • Tap sun/moon icon to switch themes
+                • Green text preserves night vision
+                • Reduces screen glare in dark conditions
+                
+                💡 Pro Tip: Practice using the app during drills so you're familiar with all features before you need them in a real emergency.
                 """
             )
         ]
@@ -979,100 +1020,57 @@ struct HelpContent {
     )
     
     // MARK: - Import/Export Category
-    
+
     static let importExportCategory = HelpCategory(
         id: "import_export",
         title: "Import & Export",
         icon: "square.and.arrow.up.on.square",
         topics: [
             HelpTopic(
-                id: "csv_checklist_import",
-                title: "Creating Checklists in Excel/Numbers",
-                content: "Create checklists using familiar spreadsheet applications and import them as CSV files. Perfect for team standardization and complex checklist development.",
-                screenshot: UIImage(named: "help_csv_checklist_creation"),
+                id: "how_to_import_files",
+                title: "📱 How to Import Files (IMPORTANT - Read First)",
+                content: "Files shared through messaging apps require an extra step. Save files to the Files app first, then share to Ship Pilot Checklists for reliable importing.",
+                screenshot: UIImage(named: "help_files_app_import"),
                 detailedContent: """
-                Spreadsheet Setup:
-                1. Create new spreadsheet in Excel, Numbers, or Google Sheets
-                2. Column A header: "Priority" (exact spelling required)
-                3. Column B header: "Item" (exact spelling required)
-                4. No other columns required
+                ⚠️ IMPORTANT: Direct Import from Messaging Apps
                 
-                Adding Checklist Data:
-                Priority Column (A):
-                • High Priority - for immediate, safety-critical actions
-                • Medium Priority - for important follow-up actions
-                • Low Priority - for documentation and reporting
-                • Custom priorities - any text creates a new section
+                When receiving .json or .csv files through messaging apps (Signal, iMessage, WhatsApp, Teams, etc.), iOS security restrictions often prevent direct importing. Follow these steps for reliable imports:
                 
-                Item Column (B):
-                • Individual checklist item text
-                • Keep items clear and actionable
-                • Use active voice (e.g., "Check engine status" not "Engine status checked")
-                • Include specific equipment references when needed
+                ✅ Recommended Import Method:
+                1. In your messaging app, tap and hold the file
+                2. Choose "Save to Files"
+                3. Select a location (iCloud Drive or On My iPhone)
+                4. Open the Files app
+                5. Find your saved file
+                6. Tap the file to preview it
+                7. Tap the Share button (square with arrow)
+                8. Select "Ship Pilot Checklists" from the share sheet
                 
-                Saving and Import:
-                1. Save as CSV format (NOT UTF-8 CSV)
-                2. From Custom Checklists, tap "Import .csv"
-                3. Select your CSV file
-                4. App automatically organizes items by priority sections
-                5. Review and edit the imported checklist
+                Why This Extra Step?
+                • Messaging apps store files in protected containers
+                • iOS security prevents direct access between apps
+                • The Files app provides a neutral, accessible location
+                • This method works 100% of the time
                 
-                Example CSV Structure:
-                Priority,Item
-                High Priority,Sound general alarm
-                High Priority,Determine location of fire
-                High Priority,Close watertight doors
-                Medium Priority,Contact local authorities
-                Low Priority,Document incident details
+                Alternative Methods That Also Work:
+                • ✅ Email attachments - Usually work directly
+                • ✅ AirDrop - Works directly between iOS devices
+                • ✅ Cloud storage links - Download to Files first
+                • ❌ Direct from messaging apps - Often fails
                 
-                Team Collaboration Benefits:
-                • Multiple team members can contribute to checklist development
-                • Version control through spreadsheet applications
-                • Easy review and approval process
-                • Standardization across vessel types or operations
-                """
-            ),
-            HelpTopic(
-                id: "checklist_sharing_system",
-                title: "Sharing Custom Checklists",
-                content: "Share your custom checklists with colleagues using the universal .shipchecklist format. Perfect for team standardization and procedure distribution.",
-                screenshot: UIImage(named: "help_checklist_sharing"),
-                detailedContent: """
-                Sharing Custom Checklists:
-                1. Go to Custom Checklists
-                2. Swipe left on any checklist
-                3. Tap "Share"
-                4. Choose sharing method (Email, AirDrop, Messages, etc.)
-                5. File automatically saved with .shipchecklist extension
+                Supported File Types:
+                • .json - For contacts and checklists (universal format)
+                • .csv - For contacts and checklists (spreadsheet format)
+                • .shipchecklist - For custom checklists only
                 
-                File Format Benefits:
-                • Universal format works across all devices
-                • Maintains all checklist structure and content
-                • Compatible with email, messaging, and file sharing
-                • Direct import when received by other app users
-                • Professional file format for maritime industry
+                Troubleshooting:
+                If you see "Could not access the file" error:
+                • You tried to import directly from a messaging app
+                • Save to Files app first, then try again
+                • Make sure the file isn't corrupted or empty
                 
-                Receiving Shared Checklists:
-                • Files automatically open in the app when tapped
-                • Import confirmation dialog shows checklist preview
-                • Imported checklists appear in Custom Checklists
-                • Original sharer's work preserved exactly
-                
-                Team Standardization:
-                • Distribute standardized procedures across pilot groups
-                • Share vessel-specific checklists between pilots
-                • Collaborate on emergency procedure development
-                • Maintain consistency across different vessels
-                • Update team procedures centrally and redistribute
-                
-                Professional Distribution:
-                • Share with vessel management for approval
-                • Distribute to relief pilots for consistency
-                • Provide to training departments for standardization
-                • Submit to maritime authorities when required
-                • Archive approved procedures for regulatory compliance
-                
-                The .shipchecklist format ensures your procedures maintain their structure and content when shared across teams and organizations.
+                💡 Pro Tip:
+                Create a folder in Files app called "Ship Pilot Imports" to keep all your import files organized in one place.
                 """
             ),
             HelpTopic(
@@ -1081,6 +1079,8 @@ struct HelpContent {
                 content: "Use the JSON format for maximum compatibility when sharing contact databases. Works with all email and messaging systems without restrictions.",
                 screenshot: UIImage(named: "help_json_contacts_export"),
                 detailedContent: """
+                ⚠️ IMPORTING JSON FILES: Save to Files app first if receiving through messaging apps (Signal, iMessage, WhatsApp). See "How to Import Files" for detailed instructions.
+                
                 Exporting Contacts (JSON):
                 1. Go to Contacts
                 2. Tap "Export Contacts" at bottom
@@ -1091,13 +1091,26 @@ struct HelpContent {
                 4. Tap "Export" to create JSON file
                 5. Choose sharing method
                 
+                Category Preservation:
+                • Exported categories maintain their exact names
+                • When importing, contacts merge into matching categories
+                • New categories created only if they don't exist
+                • Emergency category is never duplicated
+                • Smart case-insensitive matching (e.g., "emergency" matches "Emergency")
                 
                 Importing JSON Contacts:
-                • JSON files automatically detected when opened
-                • Share to app from any source (email, messages, files)
-                • Contacts imported with timestamped category names
-                • All contact information and categories preserved
-                • Works from AirDrop, cloud storage and email attachments (Gmail, Outlook, Apple Mail), message attachments (iMessage, Signal, WhatsApp, Teams), Files app
+                • Save file to Files app first (if from messaging apps)
+                • Share to Ship Pilot Checklists from Files app
+                • Contacts automatically organized by category
+                • See detailed import summary
+                • Option to "View Imported" for quick review
+                
+                Import Sources That Work:
+                ✅ Files app (most reliable)
+                ✅ Email attachments (Gmail, Outlook, Apple Mail)
+                ✅ AirDrop from other iOS devices
+                ✅ Cloud storage (after saving to Files)
+                ⚠️ Messaging apps (must save to Files first)
                 
                 Team Contact Management:
                 • Export standardized contact lists for team sharing
@@ -1105,7 +1118,12 @@ struct HelpContent {
                 • Share regional contact information between pilot groups
                 • Distribute updated contact information efficiently
                 • Maintain consistent contact databases across teams
-
+                
+                Import Results:
+                • Shows contacts added to existing categories
+                • Lists any new categories created
+                • Preserves all contact fields and information
+                • No duplicate Emergency category creation
                 """
             ),
             HelpTopic(
@@ -1114,6 +1132,8 @@ struct HelpContent {
                 content: "Import large contact databases from spreadsheets using CSV format with automatic category organization. Ideal for organizations with existing contact management systems.",
                 screenshot: UIImage(named: "help_csv_contacts_import"),
                 detailedContent: """
+                ⚠️ IMPORTING CSV FILES: Save to Files app first if receiving through messaging apps. Direct imports from Signal, WhatsApp, or iMessage often fail due to iOS restrictions.
+                
                 Creating Contact CSV:
                 Required Columns:
                 • Name - Contact name or vessel/station identification
@@ -1148,8 +1168,8 @@ struct HelpContent {
                 1. Create spreadsheet with contact information
                 2. Include a "Category" column to organize contacts automatically
                 3. Save as standard CSV (not UTF-8 CSV)
-                4. Share CSV file to the app or open from Files app
-                5. App automatically detects CSV format
+                4. If receiving via messaging app, save to Files app first
+                5. Share CSV file to Ship Pilot Checklists from Files app
                 6. Contacts imported into their specified categories
                 7. New categories created as needed
                 
@@ -1191,16 +1211,123 @@ struct HelpContent {
                 """
             ),
             HelpTopic(
+                id: "csv_checklist_import",
+                title: "Creating Checklists in Excel/Numbers",
+                content: "Create checklists using familiar spreadsheet applications and import them as CSV files. Perfect for team standardization and complex checklist development.",
+                screenshot: UIImage(named: "help_csv_checklist_creation"),
+                detailedContent: """
+                ⚠️ IMPORTING REMINDER: If receiving CSV files through messaging apps, save to Files app first before importing.
+                
+                Spreadsheet Setup:
+                1. Create new spreadsheet in Excel, Numbers, or Google Sheets
+                2. Column A header: "Priority" (exact spelling required)
+                3. Column B header: "Item" (exact spelling required)
+                4. No other columns required
+                
+                Adding Checklist Data:
+                Priority Column (A):
+                • High Priority - for immediate, safety-critical actions
+                • Medium Priority - for important follow-up actions
+                • Low Priority - for documentation and reporting
+                • Custom priorities - any text creates a new section
+                
+                Item Column (B):
+                • Individual checklist item text
+                • Keep items clear and actionable
+                • Use active voice (e.g., "Check engine status" not "Engine status checked")
+                • Include specific equipment references when needed
+                
+                Saving and Import:
+                1. Save as CSV format (NOT UTF-8 CSV)
+                2. If shared via messaging, save to Files app first
+                3. From Files app, share to Ship Pilot Checklists
+                4. Or from Custom Checklists, tap "Import .csv"
+                5. App automatically organizes items by priority sections
+                6. Review and edit the imported checklist
+                
+                Example CSV Structure:
+                Priority,Item
+                High Priority,Sound general alarm
+                High Priority,Determine location of fire
+                High Priority,Close watertight doors
+                Medium Priority,Contact local authorities
+                Low Priority,Document incident details
+                
+                Team Collaboration Benefits:
+                • Multiple team members can contribute to checklist development
+                • Version control through spreadsheet applications
+                • Easy review and approval process
+                • Standardization across vessel types or operations
+                """
+            ),
+            HelpTopic(
+                id: "checklist_sharing_system",
+                title: "Sharing Custom Checklists",
+                content: "Share your custom checklists with colleagues using the universal .shipchecklist format. Perfect for team standardization and procedure distribution.",
+                screenshot: UIImage(named: "help_checklist_sharing"),
+                detailedContent: """
+                ⚠️ RECEIVING SHARED CHECKLISTS: If received through messaging apps, save to Files app first for reliable importing.
+                
+                Sharing Custom Checklists:
+                1. Go to Custom Checklists
+                2. Swipe left on any checklist
+                3. Tap "Share"
+                4. Choose sharing method (Email, AirDrop, Messages, etc.)
+                5. File automatically saved with .shipchecklist extension
+                
+                File Format Benefits:
+                • Universal format works across all devices
+                • Maintains all checklist structure and content
+                • Compatible with email, messaging, and file sharing
+                • Direct import when received by other app users
+                • Professional file format for maritime industry
+                
+                Receiving Shared Checklists:
+                • Save to Files app if received via messaging
+                • Files automatically open in the app when tapped from Files app
+                • Import confirmation dialog shows checklist preview
+                • Imported checklists appear in Custom Checklists
+                • Original sharer's work preserved exactly
+                
+                Team Standardization:
+                • Distribute standardized procedures across pilot groups
+                • Share vessel-specific checklists between pilots
+                • Collaborate on emergency procedure development
+                • Maintain consistency across different vessels
+                • Update team procedures centrally and redistribute
+                
+                Professional Distribution:
+                • Share with vessel management for approval
+                • Distribute to relief pilots for consistency
+                • Provide to training departments for standardization
+                • Submit to maritime authorities when required
+                • Archive approved procedures for regulatory compliance
+                
+                The .shipchecklist format ensures your procedures maintain their structure and content when shared across teams and organizations.
+                """
+            ),
+            HelpTopic(
                 id: "file_format_compatibility",
-                title: "File Format Guide and Compatibility",
-                content: "Understanding which file formats work best for different sharing scenarios and platform compatibility requirements.",
+                title: "File Format Guide and Best Practices",
+                content: "Understanding which file formats work best for different sharing scenarios. Remember: Always save to Files app first when importing from messaging apps.",
                 screenshot: UIImage(named: "help_file_formats_guide"),
                 detailedContent: """
+                🚨 CRITICAL IMPORT TIP:
+                Files received through messaging apps (Signal, iMessage, WhatsApp) must be saved to the Files app first before importing. Direct imports from messaging apps often fail due to iOS security restrictions.
+                
+                Quick Import Guide by Source:
+                ✅ Files App → Ship Pilot: ALWAYS WORKS
+                ✅ Email → Ship Pilot: Usually works directly
+                ✅ AirDrop → Ship Pilot: Works directly
+                ⚠️ Messaging Apps → Ship Pilot: Often fails
+                ✅ Messaging Apps → Files App → Ship Pilot: ALWAYS WORKS
+                
                 Supported File Formats:
                 
                 Import Formats:
                 • JSON (.json) - Universal format for contacts and checklists
-                • CSV (.csv) - Spreadsheet data for contacts and checklists  
+                • CSV (.csv) - Spreadsheet data for contacts and checklists
+                • Ship Checklist (.shipchecklist) - Custom checklists only
                 
                 Export Formats:
                 • JSON - Recommended for contacts (universal compatibility)
@@ -1212,14 +1339,14 @@ struct HelpContent {
                 
                 JSON Files Work With:
                 ✅ All email clients (Gmail, Outlook, Apple Mail, Yahoo)
-                ✅ All messaging apps (iMessage, Signal, WhatsApp, Teams, Slack)
+                ✅ All messaging apps (via Files app method)
                 ✅ All cloud services (iCloud, Google Drive, Dropbox, OneDrive)
                 ✅ AirDrop and direct file sharing
                 ✅ Files app and document management
                 ✅ Cross-platform sharing (iOS to Android, etc.)
                 
                 CSV Files Work With:
-                ✅ Most email and messaging systems
+                ✅ Most email and messaging systems (via Files app)
                 ✅ Excel, Numbers, Google Sheets for editing
                 ✅ Database applications for import
                 ✅ Most cloud storage services
@@ -1227,25 +1354,32 @@ struct HelpContent {
                 Ship Checklist Files Work With:
                 ✅ Direct app-to-app sharing
                 ✅ AirDrop between iOS devices
-                ✅ Email and messaging (some restrictions may apply)
+                ✅ Email and messaging (via Files app method)
                 ✅ Files app storage and management
                 
                 Why JSON is Preferred for Contacts:
                 • No corporate email restrictions
-                • Works in secure messaging apps
+                • Works in secure messaging apps (with Files app method)
                 • Future-proof standard format
                 • Preserves all data relationships
                 • Universal platform support
                 • No file size limitations
                 • Professional appearance in business communications
                 
-                Sharing Strategy Recommendations:
-                • Use JSON for contact sharing (maximum compatibility)
-                • Use .shipchecklist for custom checklists within maritime community
-                • Use PDF for official documentation and reports
-                • Use email for formal documentation distribution
-                • Use AirDrop for quick local sharing
-                • Use secure messaging for sensitive operational information
+                Best Practices Summary:
+                1. ALWAYS use Files app method for messaging app imports
+                2. Use JSON for contact sharing (maximum compatibility)
+                3. Use .shipchecklist for custom checklists within maritime community
+                4. Use PDF for official documentation and reports
+                5. Test your import method with a small file first
+                6. Keep backup copies in Files app
+                7. Create an "Import" folder in Files for organization
+                
+                Troubleshooting Import Failures:
+                • "Could not access file" = Save to Files app first
+                • "Invalid format" = Check file isn't corrupted
+                • "No data found" = Verify file has content
+                • Still having issues? Email the file to yourself
                 """
             )
         ]
