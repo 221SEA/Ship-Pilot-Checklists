@@ -60,7 +60,39 @@ public struct IncludedChecklists {
                 ])
             ]
         ),
-
+        ChecklistInfo(
+            title: "Allision",
+            category: .emergency,
+            sections: [
+                ChecklistSection(title: "High Priority", items: [
+                    ChecklistItem(title: "Take notes / start an audio recording (when able)", isChecked: false),
+                    ChecklistItem(title: "Sound the danger signal", isChecked: false),
+                    ChecklistItem(title: "Communicate warning via mobile phone / VHF to shoreside facilities &; people potentially in harm's way", isChecked: false),
+                    ChecklistItem(title: "Manual steering & bridge control of engines", isChecked: false),
+                    ChecklistItem(title: "Maneuver ship to minimize danger / damage / injury to people (ashore and onboard) [by any available means]", isChecked: false),
+                    ChecklistItem(title: "Use engine(s) / anchor(s) to slow / stop the ship", isChecked: false),
+                    ChecklistItem(title: "Stand by the anchors ... consider letting go", isChecked: false),
+                    ChecklistItem(title: "Determine and log ship’s position [fix position on PPU]", isChecked: false),
+                    ChecklistItem(title: "Consider “Mayday”, “Pan Pan”, or “Securite” broadcast (depending on conditions)", isChecked: false),
+                   
+                ]),
+                ChecklistSection(title: "Medium Priority", items: [
+                    ChecklistItem(title: "Determine damage and watertight integrity", isChecked: false),
+                    ChecklistItem(title: "Close watertight doors, if applicable", isChecked: false),
+                    ChecklistItem(title: "If afloat with damage, consider proceeding to shallow waters and anchoring or safetly grounding the ship", isChecked: false),
+                    ChecklistItem(title: "Consider starting emergency bilge pumps", isChecked: false),
+                    ChecklistItem(title: "Transmit VHF warning to other vessels of situation, ask for help if necessary", isChecked: false),
+                    ChecklistItem(title: "Contact CG / local authorities", isChecked: false),
+                    ChecklistItem(title: "Request Tug assistance", isChecked: false),
+                    ChecklistItem(title: "Determine effect of tide, current, present weather, and forecast weather", isChecked: false)
+                ]),
+                ChecklistSection(title: "Low Priority", items: [
+                    ChecklistItem(title: "Take photos / screenshots of ECDIS, PPU, Own Ship & other vessel, radar", isChecked: false),
+                    ChecklistItem(title: "Advise pilot office [potential Pilot relief, engage PR resources]", isChecked: false),
+                    ChecklistItem(title: "Drug / Alcohol Test", isChecked: false)
+                ])
+            ]
+        ),
         ChecklistInfo(
             title: "Anchor: Dragging",
             category: .emergency,
@@ -84,6 +116,7 @@ public struct IncludedChecklists {
                 ])
             ]
         ),
+        
         ChecklistInfo(
             title: "Blackout",
             category: .emergency,
@@ -126,7 +159,8 @@ public struct IncludedChecklists {
                     ChecklistItem(title: "Consider “Mayday”, “Pan Pan”, or “Securite” broadcast (depending on conditions)", isChecked: false),
                     ChecklistItem(title: "Determine damage and watertight integrity", isChecked: false),
                     ChecklistItem(title: "Close watertight doors, if applicable", isChecked: false),
-                    ChecklistItem(title: "If afloat with damage, consider proceeding to shallow waters and anchoring or safely grounding the ship", isChecked: false)
+                    ChecklistItem(title: "If afloat with damage, consider proceeding to shallow waters and anchoring or safely grounding the ship", isChecked: false),
+                    ChecklistItem(title: "Consider starting emergency bilge pumps", isChecked: false)
                 ]),
                 ChecklistSection(title: "Medium Priority", items: [
                     ChecklistItem(title: "Contact the other vessel; offer assistance, confirm status of personnel / cargo", isChecked: false),
@@ -287,7 +321,7 @@ public struct IncludedChecklists {
                     ChecklistItem(title: "Sound danger signal (if applicable)", isChecked: false),
                     ChecklistItem(title: "Stop propulsion...do not try to back out", isChecked: false),
                     ChecklistItem(title: "Close watertight doors", isChecked: false),
-                    ChecklistItem(title: "Verify status of your maneuvering resources (are they damaged?): Engines, Steering, Engage manual steering, Thrusters, Stand by the anchors ... consider letting go", isChecked: false),
+                    ChecklistItem(title: "Verify status of your maneuvering resources (are they damaged?): Engines, Steering: Engage manual steering, Thrusters, Stand by the anchors: consider letting go", isChecked: false),
                     ChecklistItem(title: "Consider “Mayday”, “Pan Pan”, or “Securite” broadcast (depending on conditions)", isChecked: false),
                     ChecklistItem(title: "Determine and log ship’s position", isChecked: false),
                     ChecklistItem(title: "Verify traffic situation", isChecked: false),
@@ -296,6 +330,7 @@ public struct IncludedChecklists {
                     ChecklistItem(title: "Determine effect of tide, current, present weather, and forecast weather", isChecked: false),
                     ChecklistItem(title: "When is the next high tide?", isChecked: false),
                     ChecklistItem(title: "Sound bilges / tanks; determine flooding situation, if any", isChecked: false),
+                    ChecklistItem(title: "Consider starting emergency bilge pumps", isChecked: false),
                     ChecklistItem(title: "Assess hull damage and structural integrity", isChecked: false),
                     ChecklistItem(title: "Request Tug assistance", isChecked: false)
                 ]),
@@ -346,7 +381,11 @@ public struct IncludedChecklists {
             sections: [
                 ChecklistSection(title: "High Priority", items: [
                     ChecklistItem(title: "Take notes / start an audio recording (when able)", isChecked: false),
-                    ChecklistItem(title: "Identify available maneuvering resources: RPMs, Steering [manual steering, steering gear pumps, standby steering gear room], Thrusters, Anchors [consider letting go]", isChecked: false),
+                    ChecklistItem(title: "Identify available maneuvering resources", isChecked: false),
+                    ChecklistItem(title: "RPMs (put to zero)", isChecked: false),
+                    ChecklistItem(title: "Steering [engage manual steering, standby steering gear room", isChecked: false),
+                    ChecklistItem(title: "Thrusters", isChecked: false),
+                    ChecklistItem(title: "Anchors [consider letting go]", isChecked: false),
                     ChecklistItem(title: "Identify available navigational resources [gyro, radar, PPU]", isChecked: false),
                     ChecklistItem(title: "Determine and log ship’s position [fix position on PPU]", isChecked: false),
                     ChecklistItem(title: "Analyze set / drift", isChecked: false),
@@ -355,6 +394,7 @@ public struct IncludedChecklists {
                     ChecklistItem(title: "Sound danger signal (if applicable)", isChecked: false),
                     ChecklistItem(title: "Consider emergency broadcast (depending on conditions)", isChecked: false),
                     ChecklistItem(title: "Transmit VHF warning to other vessels of situation", isChecked: false),
+                    ChecklistItem(title: "Update AIS status /Turn on Not Under Command lights /  Hoist 2 black balls dayshape", isChecked: false),
                     ChecklistItem(title: "Consider outside maneuvering assistance [tugs, other vessels]", isChecked: false)
                 ]),
                 ChecklistSection(title: "Medium Priority", items: [
@@ -369,12 +409,14 @@ public struct IncludedChecklists {
         ),
 
         ChecklistInfo(
-            title: "Loss of Steering",
+            title: "Loss of Steering (Rudders / Azipods)",
             category: .emergency,
             sections: [
                 ChecklistSection(title: "High Priority", items: [
                     ChecklistItem(title: "Take notes / start an audio recording", isChecked: false),
-                    ChecklistItem(title: "Identify available maneuvering resources: Status of steering gear pumps, Identify position of the rudder / azipods, Engine & RPMs", isChecked: false),
+                    ChecklistItem(title: "Identify available maneuvering resources: status of steering gear pumps / start standby pumps", isChecked: false),
+                    ChecklistItem(title: "Identify position of the rudder, go to manual steering, put rudder at ‘midships", isChecked: false),
+                    ChecklistItem(title: "OR Identify position of the azipods (go to azimuth maneuvering mode), put azipods at ‘midships", isChecked: false),
                     ChecklistItem(title: "Decrease RPMs to slow or stop the ship", isChecked: false),
                     ChecklistItem(title: "Thrusters available and online", isChecked: false),
                     ChecklistItem(title: "Anchors [consider letting go]", isChecked: false),
@@ -593,6 +635,124 @@ public struct IncludedChecklists {
                     ChecklistItem(title: "Take notes / start an audio recording", isChecked: false)
                 ])
             ]
-        )
+        ),
+        ChecklistInfo(
+            title: "Pilot Transfer Area",
+            category: .standard,
+            sections: [
+                ChecklistSection(title: "High Priority", items: [
+                    ChecklistItem(title: "Clear communication established between the ship, the pilot boat, and the pilot", isChecked: false),
+                    ChecklistItem(title: "Agreement between the ship, the pilot boat, and the pilot on the location of the pilot embarkation/disembarkation area", isChecked: false),
+                    ChecklistItem(title: "Adequate sea room for the operation", isChecked: false),
+                    ChecklistItem(title: "Assessment of environmental conditions and adequate lee for safe transfer", isChecked: false),
+                    ChecklistItem(title: "Communication and proximity arrangements with local marine traffic", isChecked: false)
+                ])
+            ]
+        ),
+        ChecklistInfo(
+            title: "Pilot Prep for Embarkation",
+            category: .standard,
+            sections: [
+                ChecklistSection(title: "Safety Gear", items: [
+                    ChecklistItem(title: "Helmet", isChecked: false),
+                    ChecklistItem(title: "PFD w/ reflective tape", isChecked: false),
+                    ChecklistItem(title: "Gloves", isChecked: false),
+                    ChecklistItem(title: "Handheld VHF", isChecked: false),
+                    ChecklistItem(title: "Waterproof flashlight", isChecked: false),
+                    ChecklistItem(title: "Emergency strobe light", isChecked: false),
+                    ChecklistItem(title: "EPIRB/ MOB AIS device", isChecked: false)
+                ]),
+                ChecklistSection(title: "Prior to Leaving Pilot Boat", items: [
+                    ChecklistItem(title: "Position and location of pilot boat safety equipment", isChecked: false),
+                    ChecklistItem(title: "Clear communication is established between the ship, the pilot boat, and the pilot", isChecked: false),
+                    ChecklistItem(title: "Agreement between the ship, the pilot boat, and the pilot on the location of the pilot embarkation/disembarkation area", isChecked: false),
+                    ChecklistItem(title: "Adequate sea room for the operation", isChecked: false),
+                    ChecklistItem(title: "Assessment of environmental conditions and adequate lee for safe transfer", isChecked: false),
+                    ChecklistItem(title: "Communication and proximity arrangements with local marine traffic", isChecked: false)
+                ]),
+                ChecklistSection(title: "Info from P/B and Pilot to Ship", items: [
+                    ChecklistItem(title: "Heading and speed requirement for the transfer", isChecked: false),
+                    ChecklistItem(title: "The presence of navigational dangers, tidal height and current", isChecked: false),
+                    ChecklistItem(title: "Movements of other vessels in the area", isChecked: false),
+                    ChecklistItem(title: "The side on which the transfer should take place and the pilot ladder should be rigged", isChecked: false),
+                    ChecklistItem(title: "Required height of the pilot ladder above sea level", isChecked: false),
+                    ChecklistItem(title: "Required man ropes and/or heaving lines", isChecked: false),
+                    ChecklistItem(title: "The number of persons transferring", isChecked: false)
+                ]),
+                ChecklistSection(title: "Safe Transfer", items: [
+                    ChecklistItem(title: "The pilot should remain inside the pilot boat cabin during the approach to the ship and until alongside", isChecked: false),
+                    ChecklistItem(title: "The pilot should be prepared to abort the transfer if conditions do not look safe", isChecked: false)
+                ])
+            ]
+        ),
+        ChecklistInfo(
+            title: "Pilot Ladder Inspection",
+            category: .standard,
+            sections: [
+                ChecklistSection(title: "Pilot Ladder Condition & Securing", items: [
+                    ChecklistItem(title: "Handhold stanchions at the bulwark station have been fitted and lashed securely to the deck", isChecked: false),
+                    ChecklistItem(title: "Pilot ladder is firmly against the ship’s side", isChecked: false),
+                    ChecklistItem(title: "Pilot ladder is rigged to the correct height (in consultation with the pilot boat)", isChecked: false),
+                    ChecklistItem(title: "Condition: Wear & tear on ropes, steps, and spreaders", isChecked: false),
+                    ChecklistItem(title: "Condition: Broken or missing chocks or loose steps", isChecked: false),
+                    ChecklistItem(title: "Condition: All steps and ropes clean and free of grease", isChecked: false),
+                    ChecklistItem(title: "EPIRB/ MOB AIS device", isChecked: false)
+                ]),
+                ChecklistSection(title: "Accommodation Ladder Condition & Securing", items: [
+                    ChecklistItem(title: "Rigged if Pilot Ladder exceeds 9 meters in length", isChecked: false),
+                    ChecklistItem(title: "Condition: All steps and siderails clean and free of grease", isChecked: false),
+                    ChecklistItem(title: "Accommodation ladder is secured to the ship's side (independent of the pilot ladder) leading aft", isChecked: false),
+                    ChecklistItem(title: "Hand railings and hand ropes rigged correctly, both inboard and outboard", isChecked: false),
+                    ChecklistItem(title: "The platform is rigged horizontally at least 5 meters above sea level", isChecked: false),
+                    ChecklistItem(title: "Pilot ladder is secured to the ship 2 meters above the platform", isChecked: false)
+                ]),
+                ChecklistSection(title: "Safety Equipment present and ready for use", items: [
+                    ChecklistItem(title: "Lifebuoy with self-actuating light", isChecked: false),
+                    ChecklistItem(title: "Manropes (if requested by pilot)", isChecked: false),
+                    ChecklistItem(title: "Heaving line", isChecked: false),
+                    ChecklistItem(title: "Deck officer in communication with the bridge", isChecked: false),
+                    ChecklistItem(title: "Adequate lighting at the pilot access point", isChecked: false)
+                ]),
+                ChecklistSection(title: "Other rigging", items: [
+                    ChecklistItem(title: "Check that the pilot ladder retrieval wire has been rigged correctly (above the spreader, leading forward)", isChecked: false),
+                    ChecklistItem(title: "Ensure that the accommodation ladder winch reel is mechanically locked", isChecked: false)
+                ])
+            ]
+        ),
+        ChecklistInfo(
+            title: "Pilot Prep for Disembarkation",
+            category: .standard,
+            sections: [
+                ChecklistSection(title: "Safety Gear", items: [
+                    ChecklistItem(title: "Helmet", isChecked: false),
+                    ChecklistItem(title: "PFD w/ reflective tape", isChecked: false),
+                    ChecklistItem(title: "Gloves", isChecked: false),
+                    ChecklistItem(title: "Handheld VHF", isChecked: false),
+                    ChecklistItem(title: "Waterproof flashlight", isChecked: false),
+                    ChecklistItem(title: "Emergency strobe light", isChecked: false),
+                    ChecklistItem(title: "EPIRB/ MOB AIS device", isChecked: false)
+                ]),
+                ChecklistSection(title: "Prior to Leaving the bridge", items: [
+                    ChecklistItem(title: "Clear communication is established between the ship, the pilot boat, and the pilot", isChecked: false),
+                    ChecklistItem(title: "Agreement between the ship, the pilot boat, and the pilot on the location of the pilot embarkation/disembarkation area", isChecked: false),
+                    ChecklistItem(title: "Adequate sea room for the operation", isChecked: false),
+                    ChecklistItem(title: "Assessment of environmental conditions and adequate lee for safe transfer", isChecked: false),
+                    ChecklistItem(title: "Communication and proximity arrangements with local marine traffic (consider Security Call)", isChecked: false)
+                ]),
+                ChecklistSection(title: "Pilot Should Inform the Master of:", items: [
+                    ChecklistItem(title: "Anticipated movements of any surrounding ships", isChecked: false),
+                    ChecklistItem(title: "VHF channels to monitor and reporting points", isChecked: false),
+                    ChecklistItem(title: "Heading and speed requirement for the transfer", isChecked: false),
+                    ChecklistItem(title: "The presence of navigational dangers, tidal height and current", isChecked: false),
+                    ChecklistItem(title: "Any advice on the passage plan to be used post transfer", isChecked: false),
+                    ChecklistItem(title: "The anticipated helm or engine movements required to facilitate transfer ", isChecked: false),
+                    ChecklistItem(title: "VHF channels for communication with pilot boat", isChecked: false),
+                    ChecklistItem(title: "Any adjustments to the pilot ladder required by pilot launch", isChecked: false)
+                ]),
+                ChecklistSection(title: "Safe Transfer", items: [
+                    ChecklistItem(title: "The pilot should be prepared to abort the transfer if conditions do not look safe", isChecked: false)
+                ])
+            ]
+        ),
     ]
 }
