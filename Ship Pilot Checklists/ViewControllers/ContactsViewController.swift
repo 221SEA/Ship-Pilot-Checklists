@@ -44,6 +44,9 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         for i in 0..<categories.count {
             expandedSections.insert(i)
         }
+        
+        // FIXED: Listen for import notifications
+        setupImportNotifications()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -59,6 +62,9 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
             searchBar.setNeedsLayout()
             searchBar.layoutIfNeeded()
         }
+        
+        // Validate data integrity and reload if needed
+        validateDataIntegrity()
         
         // Reload in case contacts were edited
         loadData()
@@ -106,6 +112,10 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         super.traitCollectionDidChange(previousTraitCollection)
         updateTheme()
         setupToolbar()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - Setup
@@ -266,6 +276,133 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         // Fix icons
         if let leftView = searchBar.searchTextField.leftView as? UIImageView {
             leftView.tintColor = .secondaryLabel
+        }
+    }
+    
+    // MARK: - Import Notifications
+    private func setupImportNotifications() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleContactsImported(_:)),
+            name: NSNotification.Name("ContactsImported"),
+            object: nil
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleNavigateToImported(_:)),
+            name: NSNotification.Name("NavigateToImportedContacts"),
+            object: nil
+        )
+    }
+
+    @objc private func handleContactsImported(_ notification: Notification) {
+        print("📱 ContactsViewController received import notification")
+        
+        // Reload data to pick up the new category
+        loadData()
+        
+        // Find the new imported category and expand it
+        if let userInfo = notification.userInfo,
+           let categoryName = userInfo["categoryName"] as? String,
+           let newCategoryIndex = categories.firstIndex(where: { $0.name == categoryName }) {
+            
+            print("📂 Found imported category '\(categoryName)' at index \(newCategoryIndex)")
+            
+            // Expand the new section
+            expandedSections.insert(newCategoryIndex)
+            
+            // Reload table
+            tableView.reloadData()
+            
+            print("✅ Expanded section \(newCategoryIndex) for imported category")
+        } else {
+            print("❌ Could not find imported category in loaded data")
+            // Just reload everything
+            tableView.reloadData()
+        }
+    }
+
+    @objc private func handleNavigateToImported(_ notification: Notification) {
+        guard let categoryName = notification.object as? String,
+              let categoryIndex = categories.firstIndex(where: { $0.name == categoryName }) else {
+            print("❌ Could not find category to navigate to")
+            return
+        }
+        
+        print("🧭 Navigating to imported category: \(categoryName) at index \(categoryIndex)")
+        
+        // Ensure section is expanded
+        expandedSections.insert(categoryIndex)
+        tableView.reloadData()
+        
+        // Scroll to the imported section after a brief delay to allow the reload to complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            // Check if section has contacts to scroll to
+            if categoryIndex < self.tableView.numberOfSections &&
+               self.tableView.numberOfRows(inSection: categoryIndex) > 0 {
+                let indexPath = IndexPath(row: 0, section: categoryIndex)
+                self.tableView.scrollToRow(at: indexPath, at: .top, animated: true)
+                
+                // Flash the section briefly to draw attention
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    if let headerView = self.tableView.headerView(forSection: categoryIndex) {
+                        let originalBackgroundColor = headerView.backgroundColor
+                        
+                        UIView.animate(withDuration: 0.2, animations: {
+                            headerView.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.3)
+                        }) { _ in
+                            UIView.animate(withDuration: 0.2, delay: 0.5, animations: {
+                                headerView.backgroundColor = originalBackgroundColor
+                            })
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Data Loading
+    private func loadData() {
+        let oldCategoryCount = categories.count
+        categories = ContactsManager.shared.loadCategories()
+        
+        print("📊 Loaded \(categories.count) categories (was \(oldCategoryCount))")
+        
+        // Debug: Print all categories
+        for (index, category) in categories.enumerated() {
+            print("Category \(index): \(category.name) - \(category.contacts.count) contacts - isSystemCategory: \(category.isSystemCategory)")
+        }
+        
+        // If we have new categories (import), expand them automatically
+        if categories.count > oldCategoryCount {
+            print("🆕 New categories detected, expanding all sections")
+            expandedSections.removeAll()
+            for i in 0..<categories.count {
+                expandedSections.insert(i)
+            }
+        } else if expandedSections.isEmpty {
+            // First time loading - expand all sections
+            for i in 0..<categories.count {
+                expandedSections.insert(i)
+            }
+        } else {
+            // Adjust expanded sections if categories were rearranged
+            let validSections = Set(0..<categories.count)
+            expandedSections = expandedSections.intersection(validSections)
+        }
+        
+        print("📂 Expanded sections: \(expandedSections)")
+    }
+    
+    private func validateDataIntegrity() {
+        // Check if our categories array is in sync with what's saved
+        let savedCategories = ContactsManager.shared.loadCategories()
+        
+        if savedCategories.count != categories.count {
+            print("⚠️ Data integrity issue detected - reloading data")
+            loadData()
+            tableView.reloadData()
         }
     }
     
@@ -616,22 +753,6 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         }
     }
     
-    // MARK: - Data
-    private func loadData() {
-        categories = ContactsManager.shared.loadCategories()
-        
-        // Debug: Print category system status
-        for (index, category) in categories.enumerated() {
-            print("Category \(index): \(category.name) - isSystemCategory: \(category.isSystemCategory)")
-        }
-        
-        // Reset expanded sections when data is reloaded
-        expandedSections.removeAll()
-        for i in 0..<categories.count {
-            expandedSections.insert(i)
-        }
-    }
-    
     // MARK: - Actions
     @objc private func addCategoryTapped() {
         let alert = UIAlertController(
@@ -728,8 +849,6 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         present(nav, animated: true)
     }
     
-    // Replace the export method in ContactsViewController.swift with this:
-
     private func export(categories: [ContactCategory], suggestedFileName: String) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
@@ -1121,7 +1240,7 @@ extension ContactsViewController {
             DispatchQueue.global(qos: .userInitiated).async {
                 let imported: [OperationalContact] = contacts.compactMap { contact in
                     guard let number = contact.phoneNumbers.first?.value.stringValue else { return nil }
-
+                    
                     var newContact = OperationalContact(
                         name: "\(contact.givenName) \(contact.familyName)".trimmingCharacters(in: .whitespaces),
                         phone: number
@@ -1131,7 +1250,7 @@ extension ContactsViewController {
                     newContact.role = contact.jobTitle.isEmpty ? nil : contact.jobTitle
                     return newContact
                 }
-
+                
                 DispatchQueue.main.async {
                     // Dismiss processing alert
                     processingAlert.dismiss(animated: true) {
@@ -1151,21 +1270,36 @@ extension ContactsViewController {
                             let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
                             let categoryName = "Imported (\(timestamp))"
                             ContactsManager.shared.addCategory(name: categoryName, contacts: imported, to: &self.categories)
-
-                            // Reload UI
-                            self.loadData()
-                            self.tableView.reloadData()
-
-                            // Show success with details
-                            let message = imported.count == 1
-                                ? "1 contact was imported into '\(categoryName)'. You can drag and drop contacts to reorganize them."
-                                : "\(imported.count) contacts were imported into '\(categoryName)'. You can drag and drop contacts to reorganize them."
                             
-                            self.showImportAlert(
+                            // FIXED: Use the same notification system as CSV import
+                            NotificationCenter.default.post(name: NSNotification.Name("ContactsImported"), object: nil, userInfo: [
+                                "categoryName": categoryName,
+                                "contactCount": imported.count,
+                                "generatedNames": 0,
+                                "skippedRows": 0
+                            ])
+                            
+                            // Show success with option to view
+                            let message = imported.count == 1
+                            ? "1 contact was imported into '\(categoryName)'. You can drag and drop contacts to reorganize them."
+                            : "\(imported.count) contacts were imported into '\(categoryName)'. You can drag and drop contacts to reorganize them."
+                            
+                            let successAlert = UIAlertController(
                                 title: "Import Successful",
                                 message: message,
-                                isSuccess: true
+                                preferredStyle: .alert
                             )
+                            
+                            successAlert.addAction(UIAlertAction(title: "View Imported", style: .default) { _ in
+                                NotificationCenter.default.post(name: NSNotification.Name("NavigateToImportedContacts"), object: categoryName)
+                            })
+                            
+                            successAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                            
+                            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                               let window = windowScene.windows.first {
+                                window.rootViewController?.present(successAlert, animated: true)
+                            }
                         }
                     }
                 }
@@ -1358,15 +1492,73 @@ extension ContactsViewController: UITableViewDragDelegate, UITableViewDropDelega
     }
 
     func tableView(_ tableView: UITableView, performDropWith coordinator: UITableViewDropCoordinator) {
-        guard let item = coordinator.items.first else { return }
+        guard let item = coordinator.items.first else {
+            print("❌ No drag item found")
+            return
+        }
         
         // Only handle contact reordering
-        guard let (_, sourceIndexPath) = item.dragItem.localObject as? (OperationalContact, IndexPath),
-              let destinationIndexPath = coordinator.destinationIndexPath else { return }
+        guard let (contact, sourceIndexPath) = item.dragItem.localObject as? (OperationalContact, IndexPath),
+              let destinationIndexPath = coordinator.destinationIndexPath else {
+            print("❌ Invalid drag data or destination")
+            return
+        }
         
+        print("🔄 Attempting to move contact: \(contact.name) from \(sourceIndexPath) to \(destinationIndexPath)")
+        
+        // Validate that we still have valid data before attempting the move
+        guard sourceIndexPath.section < categories.count,
+              sourceIndexPath.row < categories[sourceIndexPath.section].contacts.count,
+              destinationIndexPath.section < categories.count,
+              destinationIndexPath.row <= categories[destinationIndexPath.section].contacts.count else {
+            
+            print("❌ Invalid indices during drop operation")
+            print("   Source: [\(sourceIndexPath.section), \(sourceIndexPath.row)]")
+            print("   Destination: [\(destinationIndexPath.section), \(destinationIndexPath.row)]")
+            print("   Categories count: \(categories.count)")
+            
+            if sourceIndexPath.section < categories.count {
+                print("   Source section contacts count: \(categories[sourceIndexPath.section].contacts.count)")
+            }
+            if destinationIndexPath.section < categories.count {
+                print("   Destination section contacts count: \(categories[destinationIndexPath.section].contacts.count)")
+            }
+            
+            // Show user feedback
+            showAlert(title: "Move Failed", message: "Could not move contact due to invalid position. Please try again.")
+            
+            // Reload data to ensure UI is consistent with data model
+            DispatchQueue.main.async {
+                self.loadData()
+                self.tableView.reloadData()
+            }
+            return
+        }
+        
+        // Perform the move with enhanced error handling
         tableView.performBatchUpdates({
-            ContactsManager.shared.moveContact(from: sourceIndexPath, to: destinationIndexPath, in: &categories)
+            // Move in the data model first
+            ContactsManager.shared.moveContact(from: sourceIndexPath, to: destinationIndexPath, in: &self.categories)
+            
+            // Then update the UI
             tableView.moveRow(at: sourceIndexPath, to: destinationIndexPath)
+            
+        }, completion: { success in
+            if success {
+                print("✅ Contact move completed successfully")
+            } else {
+                print("❌ Table view batch update failed")
+                
+                // If the UI update failed, reload everything to ensure consistency
+                DispatchQueue.main.async {
+                    self.loadData()
+                    self.tableView.reloadData()
+                    
+                    // Show user feedback
+                    self.showAlert(title: "Move Completed",
+                                  message: "Contact was moved but the display needed to refresh. Your change has been saved.")
+                }
+            }
         })
     }
     

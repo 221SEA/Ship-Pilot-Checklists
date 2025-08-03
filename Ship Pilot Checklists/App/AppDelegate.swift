@@ -1,4 +1,7 @@
-//AppDelegate.swift
+//
+//  AppDelegate.swift
+//  Ship Pilot Checklists
+//
 
 import UIKit
 import CoreData
@@ -12,7 +15,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
 
         print("AppDelegate - didFinishLaunchingWithOptions called")
-        UserDefaults.standard.removeObject(forKey: "OperationalContactCategories")
+        
+        // REMOVED: Don't delete contacts data anymore!
+        // UserDefaults.standard.removeObject(forKey: "OperationalContactCategories")
+        
+        // Initialize ContactsManager to trigger migration if needed
+        _ = ContactsManager.shared.loadCategories()
 
         ThemeManager.applyToCurrentWindow()
 
@@ -28,6 +36,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      didDiscardSceneSessions sceneSessions: Set<UISceneSession>) {}
+
+    // MARK: - App Lifecycle for Contact Persistence
+    func applicationDidEnterBackground(_ application: UIApplication) {
+        // Force save contacts when app goes to background
+        let categories = ContactsManager.shared.loadCategories()
+        ContactsManager.shared.saveCategories(categories)
+        
+        // Create manual backup for extra safety
+        _ = ContactsManager.shared.createManualBackup()
+        
+        // Existing Core Data save
+        saveContext()
+    }
+    
+    func applicationWillTerminate(_ application: UIApplication) {
+        // Ensure contacts are saved before app terminates
+        let categories = ContactsManager.shared.loadCategories()
+        ContactsManager.shared.saveCategories(categories)
+        
+        // Existing Core Data save
+        saveContext()
+    }
 
     // MARK: - Core Data stack
     lazy var persistentContainer: NSPersistentContainer = {

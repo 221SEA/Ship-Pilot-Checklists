@@ -19,6 +19,9 @@ class CustomChecklistListViewController: UIViewController,
     private let tableView = UITableView(frame: .zero, style: .plain)
     private let bottomToolbar = UIToolbar()
     
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 
     // MARK: - Lifecycle
 
@@ -39,6 +42,14 @@ class CustomChecklistListViewController: UIViewController,
 
         // 4) Load saved custom checklists
         checklists = CustomChecklistManager.shared.loadAll()
+        
+        // ADD THIS: Listen for import notifications
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(checklistImported),
+                name: NSNotification.Name("ChecklistImported"),
+                object: nil
+            )
 
         // 5) Add subviews
         view.addSubview(tableView)
@@ -72,6 +83,11 @@ class CustomChecklistListViewController: UIViewController,
 
         // ✅ 8) Set up toolbar items
         setupToolbar()
+    }
+    @objc private func checklistImported() {
+        // Reload the checklists and refresh the table
+        checklists = CustomChecklistManager.shared.loadAll()
+        tableView.reloadData()
     }
     private func setupToolbar() {
         ThemeManager.applyToolbarAppearance(bottomToolbar, trait: traitCollection)
@@ -363,16 +379,23 @@ class CustomChecklistListViewController: UIViewController,
 
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         guard let url = urls.first else { return }
-
-        // Manually trigger the same import logic used in SceneDelegate
-        let sceneDelegate = UIApplication.shared.connectedScenes
-            .first(where: { $0.activationState == .foregroundActive })?
-            .delegate as? UIWindowSceneDelegate
-
-        if let sd = sceneDelegate as? SceneDelegate {
-            sd.importChecklistFromCSV(url: url)
-        } else {
-            showAlert(title: "Import Failed", message: "Unable to access the current scene.")
+        
+        print("📁 Document picker selected: \(url)")
+        
+        // The file is already in a temporary location accessible to our app
+        // Just pass it directly to the import method
+        DispatchQueue.main.async { [weak self] in
+            // Get the scene delegate
+            let sceneDelegate = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive })?
+                .delegate as? UIWindowSceneDelegate
+            
+            if let sd = sceneDelegate as? SceneDelegate {
+                // Call the import method directly with the URL
+                sd.importChecklistFromCSV(url: url)
+            } else {
+                self?.showAlert(title: "Import Failed", message: "Unable to access the current scene.")
+            }
         }
     }
 }

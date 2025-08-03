@@ -610,6 +610,15 @@ struct HelpContent {
                 4. Share completed contact database with team members
                 5. Standardize contact information across pilot group
                 
+                CSV Alternative with Categories:
+                Consider using CSV import instead if you need:
+                • Automatic category organization during import
+                • Bulk addition of maritime-specific fields
+                • Import from existing spreadsheets or databases
+                • Team-wide standardized contact lists
+                
+                The CSV import method allows you to specify categories for each contact, eliminating the manual drag-and-drop organization step.
+                
                 This is the fastest way to get your contact database established when first setting up the app.
                 """
             ),
@@ -1102,7 +1111,7 @@ struct HelpContent {
             HelpTopic(
                 id: "csv_contacts_import",
                 title: "Bulk Contact Import from Spreadsheets",
-                content: "Import large contact databases from spreadsheets using CSV format. Ideal for organizations with existing contact management systems.",
+                content: "Import large contact databases from spreadsheets using CSV format with automatic category organization. Ideal for organizations with existing contact management systems.",
                 screenshot: UIImage(named: "help_csv_contacts_import"),
                 detailedContent: """
                 Creating Contact CSV:
@@ -1111,6 +1120,7 @@ struct HelpContent {
                 • Phone - Primary contact number
                 
                 Optional Maritime Columns (flexible naming):
+                • Category - Automatically organize contacts into specific categories
                 • Email / E-mail / Email Address
                 • Organization / Company / Employer
                 • Role / Title / Job Title / Position
@@ -1119,23 +1129,45 @@ struct HelpContent {
                 • Port / Location / Harbor / Marina
                 • Notes / Comments / Additional Info
                 
+                Category Column Features:
+                • Include a "Category" column to auto-organize contacts during import
+                • Contacts with matching category names go into existing categories
+                • New categories are automatically created for unmatched names
+                • If no category specified, contacts go to timestamped "Imported CSV" category
+                • Case-insensitive matching (e.g., "emergency" matches "Emergency")
+                
                 Column Header Recognition:
                 The app recognizes many variations of column names:
                 • "Phone Number", "Mobile", "Cell", "Telephone" all work for phone
                 • "Contact Name", "Full Name", "Person" all work for names
                 • "Job Title", "Position", "Rank" all work for roles
+                • "Category", "Group", "Type", "Department" all work for categories
                 • Partial matches also work (e.g., header containing "phone")
                 
                 Import Process:
                 1. Create spreadsheet with contact information
-                2. Save as standard CSV (not UTF-8 CSV)
-                3. Share CSV file to the app or open from Files app
-                4. App automatically detects CSV format
-                5. Contacts imported to timestamped "Imported CSV" category
-                6. Drag contacts to appropriate categories
+                2. Include a "Category" column to organize contacts automatically
+                3. Save as standard CSV (not UTF-8 CSV)
+                4. Share CSV file to the app or open from Files app
+                5. App automatically detects CSV format
+                6. Contacts imported into their specified categories
+                7. New categories created as needed
+                
+                Example CSV Structure:
+                Name,Phone,Category,VHF Channel,Organization
+                John Smith,555-1234,Emergency,16,Coast Guard
+                Harbor Master,555-5678,Port Control,12,Port Authority
+                Tug Captain,555-9012,Tug Services,8,Miller Marine
+                
+                Smart Name Generation:
+                • If name is empty but organization and role exist, generates name automatically
+                • Example: "Miller Marine Dispatcher" from org + role
+                • Falls back to "Contact [phone]" if no other info available
+                • Helps maintain readable contact lists even with incomplete data
                 
                 Bulk Import Benefits:
                 • Process hundreds of contacts quickly
+                • Auto-organize into appropriate categories
                 • Import from existing maritime databases
                 • Convert from other contact management systems
                 • Standardize contact information formats
@@ -1143,11 +1175,19 @@ struct HelpContent {
                 
                 Post-Import Organization:
                 • Review imported contacts for accuracy
-                • Drag contacts to appropriate categories
-                • Add missing maritime-specific information
-                • Delete or rename import category when organized
+                • Categories automatically created and populated
+                • Existing categories preserved and updated
+                • View summary of imported/updated categories
+                • Navigate directly to imported contacts
                 • Verify phone number formats and accuracy
-
+                
+                Import Results:
+                • Shows total contacts imported
+                • Lists which categories were updated
+                • Lists any new categories created
+                • Reports contacts with auto-generated names
+                • Indicates any skipped rows (missing phone)
+                • Option to "View Imported" for quick review
                 """
             ),
             HelpTopic(

@@ -156,6 +156,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             let contactCount = prefixedCategories.reduce(0) { $0 + $1.contacts.count }
             let categoryCount = prefixedCategories.count
             
+            // FIXED: Send notification to update UI
+            NotificationCenter.default.post(name: NSNotification.Name("ContactsImported"), object: nil, userInfo: [
+                "categoryName": prefixedCategories.first?.name ?? "Imported JSON",
+                "contactCount": contactCount,
+                "generatedNames": 0,
+                "skippedRows": 0
+            ])
+            
             let message = contactCount == 1
                 ? "1 contact imported from \(fileName)."
                 : "\(contactCount) contacts imported from \(fileName) in \(categoryCount) \(categoryCount == 1 ? "category" : "categories")."
@@ -165,6 +173,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 message: message,
                 preferredStyle: .alert
             )
+            
+            alert.addAction(UIAlertAction(title: "View Imported", style: .default) { _ in
+                if let firstCategoryName = prefixedCategories.first?.name {
+                    NotificationCenter.default.post(name: NSNotification.Name("NavigateToImportedContacts"), object: firstCategoryName)
+                }
+            })
+            
             alert.addAction(UIAlertAction(title: "OK", style: .default))
             
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -175,27 +190,36 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
     
     // MARK: - Enhanced CSV Import Handling
+    // MARK: - Enhanced CSV Import Handling
     private func handleCSVImport(from url: URL) {
         print("🔄 Starting CSV import from: \(url)")
         
         // Start accessing security-scoped resource
-        guard url.startAccessingSecurityScopedResource() else {
-            print("❌ Could not access security-scoped resource")
-            DispatchQueue.main.async {
-                self.showImportError(error: NSError(domain: "", code: 0, userInfo: [
-                    NSLocalizedDescriptionKey: "Could not access the file. Please try importing from within the app using 'Batch Add Contacts' → 'From File'."
-                ]))
-            }
-            return
-        }
+        let hasAccess = url.startAccessingSecurityScopedResource()
+        print("📱 Security-scoped resource access: \(hasAccess)")
         
+        // Always stop accessing when done
         defer {
-            url.stopAccessingSecurityScopedResource()
-            print("✅ Released security-scoped resource")
+            if hasAccess {
+                url.stopAccessingSecurityScopedResource()
+                print("✅ Released security-scoped resource")
+            }
         }
         
         do {
-            let content = try String(contentsOf: url)
+            // Try to copy the file to a temporary location first
+            let tempDirectory = FileManager.default.temporaryDirectory
+            let tempURL = tempDirectory.appendingPathComponent(url.lastPathComponent)
+            
+            // Remove any existing temp file
+            try? FileManager.default.removeItem(at: tempURL)
+            
+            // Copy the file to temp location
+            try FileManager.default.copyItem(at: url, to: tempURL)
+            print("📄 Copied file to temporary location: \(tempURL)")
+            
+            // Now read from the temporary file
+            let content = try String(contentsOf: tempURL)
             print("Successfully read file content, length: \(content.count)")
             
             let firstLine = content.components(separatedBy: .newlines).first ?? ""
@@ -204,16 +228,20 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             // Check if it looks like a checklist CSV (Priority,Item) or contacts CSV
             if firstLine.lowercased().contains("priority") && firstLine.lowercased().contains("item") {
                 print("Detected as checklist CSV")
-                importChecklistFromCSV(url: url)
+                importChecklistFromCSV(url: tempURL)
             } else if isContactsCSV(firstLine: firstLine) {
                 print("Detected as contacts CSV")
-                importContactsFromCSV(from: url)
+                importContactsFromCSV(from: tempURL)
             } else {
                 print("CSV type unclear, asking user")
                 DispatchQueue.main.async {
-                    self.showCSVTypeSelectionAlert(for: url)
+                    self.showCSVTypeSelectionAlert(for: tempURL)
                 }
             }
+            
+            // Clean up temp file after import
+            try? FileManager.default.removeItem(at: tempURL)
+            
         } catch {
             print("Error reading file: \(error)")
             DispatchQueue.main.async {
@@ -238,7 +266,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             // Role/Position
             "role", "title", "job title", "position", "rank",
             // Maritime specific
-            "vhf", "call sign", "callsign", "port", "harbor"
+            "vhf", "call sign", "callsign", "port", "harbor",
+            // Category field (NEW)
+            "category", "group", "type"
         ]
         
         let foundFields = contactFields.filter { lowercased.contains($0) }
@@ -273,9 +303,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
     
-    // MARK: - Enhanced CSV Import with Smart Name Generation
+    // MARK: - ENHANCED CSV Import with Category Support
     private func importContactsFromCSV(from url: URL) {
-        print("Starting contacts CSV import")
+        print("Starting contacts CSV import with category support")
         
         do {
             let content = try String(contentsOf: url)
@@ -342,7 +372,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 "description", "details", "other", "misc", "miscellaneous"
             ])
             
-            print("Column indices - Name: \(nameIndex), Phone: \(phoneIndex), Organization: \(organizationIndex), Role: \(roleIndex)")
+            // NEW: Find category column
+            let categoryIndex = findColumnIndex(in: headers, possibleNames: [
+                "category", "group", "type", "contact category", "contact type", "department"
+            ])
+            
+            print("Column indices - Name: \(nameIndex), Phone: \(phoneIndex), Category: \(categoryIndex)")
 
             guard let nameIdx = nameIndex, let phoneIdx = phoneIndex else {
                 throw NSError(domain: "", code: 0, userInfo: [
@@ -350,11 +385,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 ])
             }
 
-            // Parse data rows with smart name generation
+            // Load existing categories for matching
+            var allCategories = ContactsManager.shared.loadCategories()
+            
+            // Parse data rows and group by category
             rows.removeFirst() // Remove header
-            var contacts: [OperationalContact] = []
+            var contactsByCategory: [String: [OperationalContact]] = [:]
             var skippedRows = 0
             var generatedNames = 0
+            let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
 
             for (rowNum, row) in rows.enumerated() {
                 let columns = parseCSVRow(row)
@@ -438,56 +477,109 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                     contact.notes = notes.isEmpty ? nil : notes
                 }
 
-                contacts.append(contact)
-                print("Created contact: \(contact.name) - \(contact.phone)")
+                // NEW: Determine which category this contact belongs to
+                var targetCategory = "Imported CSV (\(timestamp))" // Default
+                
+                if let catIdx = categoryIndex, catIdx < columns.count {
+                    let csvCategory = columns[catIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !csvCategory.isEmpty {
+                        // Try to find matching existing category (case-insensitive)
+                        if let existingCategory = allCategories.first(where: {
+                            $0.name.lowercased() == csvCategory.lowercased()
+                        }) {
+                            targetCategory = existingCategory.name
+                            print("Matched to existing category: '\(targetCategory)'")
+                        } else {
+                            // Use the category name from CSV (new category will be created)
+                            targetCategory = csvCategory
+                            print("Will create new category: '\(targetCategory)'")
+                        }
+                    }
+                }
+                
+                // Add contact to the appropriate category group
+                contactsByCategory[targetCategory, default: []].append(contact)
+                print("Added contact '\(contact.name)' to category '\(targetCategory)'")
             }
 
-            print("Import summary: \(contacts.count) contacts created, \(skippedRows) rows skipped, \(generatedNames) names generated")
+            print("Import summary: \(contactsByCategory.values.reduce(0) { $0 + $1.count }) contacts in \(contactsByCategory.count) categories, \(skippedRows) rows skipped, \(generatedNames) names generated")
 
-            guard !contacts.isEmpty else {
+            guard !contactsByCategory.isEmpty else {
                 throw NSError(domain: "", code: 0, userInfo: [
                     NSLocalizedDescriptionKey: "No valid contacts found in CSV file. All rows were missing required phone numbers."
                 ])
             }
 
-            // Add contacts to "Imported" category
-            let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
-            let categoryName = "Imported CSV (\(timestamp))"
+            // Add contacts to their respective categories
+            var updatedCategories: [String] = []
+            var newCategories: [String] = []
             
-            var categories = ContactsManager.shared.loadCategories()
-            ContactsManager.shared.addCategory(name: categoryName, contacts: contacts, to: &categories)
+            for (categoryName, contacts) in contactsByCategory {
+                if let existingIndex = allCategories.firstIndex(where: { $0.name == categoryName }) {
+                    // Add to existing category
+                    allCategories[existingIndex].contacts.append(contentsOf: contacts)
+                    updatedCategories.append(categoryName)
+                    print("Added \(contacts.count) contacts to existing category: '\(categoryName)'")
+                } else {
+                    // Create new category
+                    let newCategory = ContactCategory(name: categoryName, contacts: contacts, isSystemCategory: false)
+                    allCategories.append(newCategory)
+                    newCategories.append(categoryName)
+                    print("Created new category '\(categoryName)' with \(contacts.count) contacts")
+                }
+            }
             
-            print("Added \(contacts.count) contacts to category '\(categoryName)'")
+            // Save all categories
+            ContactsManager.shared.saveCategories(allCategories)
+            print("Saved all categories")
 
             DispatchQueue.main.async {
-                // Create detailed success message
+                // Prepare detailed message
+                let totalContacts = contactsByCategory.values.reduce(0) { $0 + $1.count }
                 var message = ""
                 
-                if contacts.count == 1 {
+                if totalContacts == 1 {
                     message = "1 contact imported from CSV."
                 } else {
-                    message = "\(contacts.count) contacts imported from CSV."
+                    message = "\(totalContacts) contacts imported from CSV."
                 }
                 
-                // Add details about what happened
-                var details: [String] = []
+                // Add category details
+                var categoryDetails: [String] = []
+                
+                if !updatedCategories.isEmpty {
+                    let updatedList = updatedCategories.joined(separator: ", ")
+                    categoryDetails.append("• Added to existing categories: \(updatedList)")
+                }
+                
+                if !newCategories.isEmpty {
+                    let newList = newCategories.joined(separator: ", ")
+                    categoryDetails.append("• Created new categories: \(newList)")
+                }
                 
                 if generatedNames > 0 {
-                    details.append(" \(generatedNames) contact names were auto-generated from organization and role information")
+                    categoryDetails.append("• \(generatedNames) contact names were auto-generated")
                 }
                 
                 if skippedRows > 0 {
-                    details.append(" \(skippedRows) rows were skipped due to missing phone numbers")
+                    categoryDetails.append("• \(skippedRows) rows were skipped due to missing phone numbers")
                 }
                 
-                if !details.isEmpty {
-                    message += "\n\n" + details.joined(separator: "\n")
+                if !categoryDetails.isEmpty {
+                    message += "\n\n" + categoryDetails.joined(separator: "\n")
                 }
                 
                 // Add helpful tip
-                if generatedNames > 0 || skippedRows > 0 {
-                    message += "\n\n💡 Tip: You can edit any contact names in the Contacts section if needed."
-                }
+                message += "\n\n💡 Tip: Include a 'Category' column in your CSV to automatically organize contacts into specific categories."
+                
+                // Post notification for the first category that received contacts
+                let firstCategoryName = updatedCategories.first ?? newCategories.first ?? "Imported CSV"
+                NotificationCenter.default.post(name: NSNotification.Name("ContactsImported"), object: nil, userInfo: [
+                    "categoryName": firstCategoryName,
+                    "contactCount": totalContacts,
+                    "generatedNames": generatedNames,
+                    "skippedRows": skippedRows
+                ])
                 
                 let alert = UIAlertController(
                     title: "CSV Import Successful",
@@ -495,7 +587,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                     preferredStyle: .alert
                 )
                 
-                // Simple OK button only
+                // Add "View Imported" button
+                alert.addAction(UIAlertAction(title: "View Imported", style: .default) { _ in
+                    // Navigate to the first category that received imports
+                    NotificationCenter.default.post(name: NSNotification.Name("NavigateToImportedContacts"), object: firstCategoryName)
+                })
+                
                 alert.addAction(UIAlertAction(title: "OK", style: .default))
                 
                 if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -552,23 +649,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
     
     func importChecklistFromCSV(url: URL) {
-        // Start accessing security-scoped resource
-        guard url.startAccessingSecurityScopedResource() else {
-            DispatchQueue.main.async {
-                self.showImportError(error: NSError(domain: "", code: 0, userInfo: [
-                    NSLocalizedDescriptionKey: "Could not access the file."
-                ]))
-            }
-            return
-        }
-        
-        defer {
-            url.stopAccessingSecurityScopedResource()
-        }
+        print("📋 Starting checklist CSV import from: \(url)")
         
         do {
-            let content = try String(contentsOf: url)
-            var rows = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            // Try to read the file directly first
+            let content = try String(contentsOf: url, encoding: .utf8)
+            print("✅ Successfully read CSV file, length: \(content.count)")
+            
+            var rows = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
             // ✅ Step 1: Validate header
             guard let header = rows.first else {
@@ -589,7 +677,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             var groupedItems: [String: [ChecklistItem]] = [:]
 
             for row in rows {
-                let columns = row.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                let columns = row.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 guard columns.count >= 2 else { continue }
 
                 let priority = columns[0]
@@ -618,6 +706,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             }
 
         } catch {
+            print("❌ Error reading CSV file: \(error)")
             DispatchQueue.main.async {
                 self.showImportError(error: error)
             }
@@ -640,7 +729,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             alert.addAction(UIAlertAction(title: "Import", style: .default) { _ in
                 // Add to custom checklists
                 CustomChecklistManager.shared.add(checklist)
-                
+                // Post notification to refresh the list
+                NotificationCenter.default.post(name: NSNotification.Name("ChecklistImported"), object: nil)
+                            
                 // Show success message
                 let successAlert = UIAlertController(
                     title: "Success",
