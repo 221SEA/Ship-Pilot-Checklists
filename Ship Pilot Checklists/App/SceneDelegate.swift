@@ -52,24 +52,62 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
     
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-        guard let url = URLContexts.first?.url else { return }
+        guard let url = URLContexts.first?.url else {
+            print("❌ No URL provided to scene delegate")
+            return
+        }
+        
+        print("📁 SceneDelegate received URL: \(url)")
+        print("📁 File extension: \(url.pathExtension)")
+        print("📁 URL scheme: \(url.scheme ?? "none")")
+        print("📁 URL path: \(url.path)")
 
         switch url.pathExtension.lowercased() {
         case "shipchecklist":
+            print("📋 Processing checklist file")
             importChecklist(from: url)
         case "csv":
+            print("📊 Processing CSV file")
             handleCSVImport(from: url)
         case "json":
-            // Handle JSON files (contacts or checklists)
+            print("📄 Processing JSON file")
             handleJSONImport(from: url)
         default:
-            print("Unknown file type: \(url.pathExtension)")
-            break
+            print("❌ Unknown file type: \(url.pathExtension)")
+            
+            // Show alert for unknown file type
+            DispatchQueue.main.async {
+                let alert = UIAlertController(
+                    title: "Unsupported File Type",
+                    message: "File type '.\(url.pathExtension)' is not supported. Please use CSV or JSON files for contacts.",
+                    preferredStyle: .alert
+                )
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first {
+                    window.rootViewController?.present(alert, animated: true)
+                }
+            }
         }
     }
 
     // MARK: - JSON Import Handling
     private func handleJSONImport(from url: URL) {
+        // Start accessing security-scoped resource
+        guard url.startAccessingSecurityScopedResource() else {
+            DispatchQueue.main.async {
+                self.showImportError(error: NSError(domain: "", code: 0, userInfo: [
+                    NSLocalizedDescriptionKey: "Could not access the file. Please try importing from within the app."
+                ]))
+            }
+            return
+        }
+        
+        defer {
+            url.stopAccessingSecurityScopedResource()
+        }
+        
         do {
             let data = try Data(contentsOf: url)
             
@@ -107,6 +145,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let prefixedCategories = contacts.map { original in
             var copy = original
             copy.name = "Imported – \(original.name) (\(timestamp))"
+            copy.isSystemCategory = false // Imported categories are never system categories
             return copy
         }
 
@@ -128,7 +167,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             )
             alert.addAction(UIAlertAction(title: "OK", style: .default))
             
-            // FIXED: Use proper window access for iOS 13+
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                let window = windowScene.windows.first {
                 window.rootViewController?.present(alert, animated: true)
@@ -136,26 +174,48 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
     
-    // MARK: - CSV Import Handling
+    // MARK: - Enhanced CSV Import Handling
     private func handleCSVImport(from url: URL) {
+        print("🔄 Starting CSV import from: \(url)")
+        
+        // Start accessing security-scoped resource
+        guard url.startAccessingSecurityScopedResource() else {
+            print("❌ Could not access security-scoped resource")
+            DispatchQueue.main.async {
+                self.showImportError(error: NSError(domain: "", code: 0, userInfo: [
+                    NSLocalizedDescriptionKey: "Could not access the file. Please try importing from within the app using 'Batch Add Contacts' → 'From File'."
+                ]))
+            }
+            return
+        }
+        
+        defer {
+            url.stopAccessingSecurityScopedResource()
+            print("✅ Released security-scoped resource")
+        }
+        
         do {
             let content = try String(contentsOf: url)
+            print("Successfully read file content, length: \(content.count)")
+            
             let firstLine = content.components(separatedBy: .newlines).first ?? ""
+            print("First line: \(firstLine)")
             
             // Check if it looks like a checklist CSV (Priority,Item) or contacts CSV
             if firstLine.lowercased().contains("priority") && firstLine.lowercased().contains("item") {
-                // It's a checklist CSV
+                print("Detected as checklist CSV")
                 importChecklistFromCSV(url: url)
             } else if isContactsCSV(firstLine: firstLine) {
-                // It's a contacts CSV
+                print("Detected as contacts CSV")
                 importContactsFromCSV(from: url)
             } else {
-                // Ask the user what type it is
+                print("CSV type unclear, asking user")
                 DispatchQueue.main.async {
                     self.showCSVTypeSelectionAlert(for: url)
                 }
             }
         } catch {
+            print("Error reading file: \(error)")
             DispatchQueue.main.async {
                 self.showImportError(error: error)
             }
@@ -182,6 +242,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         ]
         
         let foundFields = contactFields.filter { lowercased.contains($0) }
+        print("CSV field detection - found fields: \(foundFields)")
         return foundFields.count >= 2 // If we find at least 2 contact-related fields
     }
 
@@ -212,22 +273,30 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
     
-    
-    
-    // MARK: - CSV Contacts Import
+    // MARK: - Enhanced CSV Import with Smart Name Generation
     private func importContactsFromCSV(from url: URL) {
+        print("Starting contacts CSV import")
+        
         do {
             let content = try String(contentsOf: url)
-            var rows = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            print("File content length: \(content.count)")
+            
+            // Handle Windows line endings by normalizing them
+            let normalizedContent = content.replacingOccurrences(of: "\r\n", with: "\n")
+            var rows = normalizedContent.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            print("Found \(rows.count) non-empty rows")
 
             guard let header = rows.first else {
                 throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "CSV is empty."])
             }
+            
+            print("Header: \(header)")
 
             // Parse header to understand the CSV structure
             let headers = header.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            print("Parsed headers: \(headers)")
             
-            // Find column indices for different fields - Enhanced recognition
+            // Find column indices for different fields
             let nameIndex = findColumnIndex(in: headers, possibleNames: [
                 "name", "contact name", "full name", "contact", "person", "individual"
             ])
@@ -272,6 +341,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 "notes", "comments", "remarks", "additional info", "memo",
                 "description", "details", "other", "misc", "miscellaneous"
             ])
+            
+            print("Column indices - Name: \(nameIndex), Phone: \(phoneIndex), Organization: \(organizationIndex), Role: \(roleIndex)")
 
             guard let nameIdx = nameIndex, let phoneIdx = phoneIndex else {
                 throw NSError(domain: "", code: 0, userInfo: [
@@ -279,24 +350,60 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 ])
             }
 
-            // Parse data rows
+            // Parse data rows with smart name generation
             rows.removeFirst() // Remove header
             var contacts: [OperationalContact] = []
+            var skippedRows = 0
+            var generatedNames = 0
 
             for (rowNum, row) in rows.enumerated() {
                 let columns = parseCSVRow(row)
+                print("Row \(rowNum + 2): \(columns)")
                 
                 guard columns.count > max(nameIdx, phoneIdx) else {
-                    print("Row \(rowNum + 2) has insufficient columns, skipping")
+                    print("Row \(rowNum + 2) has insufficient columns (\(columns.count)), skipping")
+                    skippedRows += 1
                     continue
                 }
                 
-                let name = columns[nameIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                var name = columns[nameIdx].trimmingCharacters(in: .whitespacesAndNewlines)
                 let phone = columns[phoneIdx].trimmingCharacters(in: .whitespacesAndNewlines)
                 
-                guard !name.isEmpty && !phone.isEmpty else {
-                    print("Row \(rowNum + 2) missing required name or phone, skipping")
+                // Check if phone is valid
+                guard !phone.isEmpty else {
+                    print("Row \(rowNum + 2) missing phone number, skipping")
+                    skippedRows += 1
                     continue
+                }
+                
+                // SMART NAME GENERATION: If name is empty, try to generate one
+                if name.isEmpty {
+                    var generatedName = ""
+                    
+                    // Try to build name from organization + role
+                    if let orgIdx = organizationIndex, orgIdx < columns.count {
+                        let org = columns[orgIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !org.isEmpty {
+                            generatedName = org
+                            
+                            // Add role if available
+                            if let roleIdx = roleIndex, roleIdx < columns.count {
+                                let role = columns[roleIdx].trimmingCharacters(in: .whitespacesAndNewlines)
+                                if !role.isEmpty {
+                                    generatedName += " \(role)"
+                                }
+                            }
+                        }
+                    }
+                    
+                    // If we still don't have a name, use phone as last resort
+                    if generatedName.isEmpty {
+                        generatedName = "Contact \(phone)"
+                    }
+                    
+                    name = generatedName
+                    generatedNames += 1
+                    print("Generated name: '\(name)' for row \(rowNum + 2)")
                 }
 
                 var contact = OperationalContact(name: name, phone: phone)
@@ -332,11 +439,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 }
 
                 contacts.append(contact)
+                print("Created contact: \(contact.name) - \(contact.phone)")
             }
+
+            print("Import summary: \(contacts.count) contacts created, \(skippedRows) rows skipped, \(generatedNames) names generated")
 
             guard !contacts.isEmpty else {
                 throw NSError(domain: "", code: 0, userInfo: [
-                    NSLocalizedDescriptionKey: "No valid contacts found in CSV file."
+                    NSLocalizedDescriptionKey: "No valid contacts found in CSV file. All rows were missing required phone numbers."
                 ])
             }
 
@@ -346,20 +456,48 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             
             var categories = ContactsManager.shared.loadCategories()
             ContactsManager.shared.addCategory(name: categoryName, contacts: contacts, to: &categories)
+            
+            print("Added \(contacts.count) contacts to category '\(categoryName)'")
 
             DispatchQueue.main.async {
-                let message = contacts.count == 1
-                    ? "1 contact imported from CSV."
-                    : "\(contacts.count) contacts imported from CSV."
+                // Create detailed success message
+                var message = ""
+                
+                if contacts.count == 1 {
+                    message = "1 contact imported from CSV."
+                } else {
+                    message = "\(contacts.count) contacts imported from CSV."
+                }
+                
+                // Add details about what happened
+                var details: [String] = []
+                
+                if generatedNames > 0 {
+                    details.append(" \(generatedNames) contact names were auto-generated from organization and role information")
+                }
+                
+                if skippedRows > 0 {
+                    details.append(" \(skippedRows) rows were skipped due to missing phone numbers")
+                }
+                
+                if !details.isEmpty {
+                    message += "\n\n" + details.joined(separator: "\n")
+                }
+                
+                // Add helpful tip
+                if generatedNames > 0 || skippedRows > 0 {
+                    message += "\n\n💡 Tip: You can edit any contact names in the Contacts section if needed."
+                }
                 
                 let alert = UIAlertController(
                     title: "CSV Import Successful",
                     message: message,
                     preferredStyle: .alert
                 )
+                
+                // Simple OK button only
                 alert.addAction(UIAlertAction(title: "OK", style: .default))
                 
-                // FIXED: Use proper window access
                 if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                    let window = windowScene.windows.first {
                     window.rootViewController?.present(alert, animated: true)
@@ -367,6 +505,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             }
 
         } catch {
+            print("CSV import error: \(error)")
             DispatchQueue.main.async {
                 self.showImportError(error: error)
             }
@@ -375,6 +514,20 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     
     // MARK: - Checklist Import
     private func importChecklist(from url: URL) {
+        // Start accessing security-scoped resource
+        guard url.startAccessingSecurityScopedResource() else {
+            DispatchQueue.main.async {
+                self.showImportError(error: NSError(domain: "", code: 0, userInfo: [
+                    NSLocalizedDescriptionKey: "Could not access the file."
+                ]))
+            }
+            return
+        }
+        
+        defer {
+            url.stopAccessingSecurityScopedResource()
+        }
+        
         do {
             // Read the file data
             let data = try Data(contentsOf: url)
@@ -399,6 +552,20 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
     
     func importChecklistFromCSV(url: URL) {
+        // Start accessing security-scoped resource
+        guard url.startAccessingSecurityScopedResource() else {
+            DispatchQueue.main.async {
+                self.showImportError(error: NSError(domain: "", code: 0, userInfo: [
+                    NSLocalizedDescriptionKey: "Could not access the file."
+                ]))
+            }
+            return
+        }
+        
+        defer {
+            url.stopAccessingSecurityScopedResource()
+        }
+        
         do {
             let content = try String(contentsOf: url)
             var rows = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -523,6 +690,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             }
         }
         
+        print("No match found for possible names: \(possibleNames)")
         return nil
     }
 
