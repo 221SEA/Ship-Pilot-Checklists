@@ -61,7 +61,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         print("📁 File extension: \(url.pathExtension)")
         print("📁 URL scheme: \(url.scheme ?? "none")")
         print("📁 URL path: \(url.path)")
-
+        
         switch url.pathExtension.lowercased() {
         case "shipchecklist":
             print("📋 Processing checklist file")
@@ -91,7 +91,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             }
         }
     }
-
+    
     // MARK: - JSON Import Handling
     private func handleJSONImport(from url: URL) {
         // Start accessing security-scoped resource
@@ -139,34 +139,69 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             }
         }
     }
-
+    
     private func importContactsFromJSON(contacts: [ContactCategory], fileName: String) {
+        var allCategories = ContactsManager.shared.loadCategories()
         let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
-        let prefixedCategories = contacts.map { original in
-            var copy = original
-            copy.name = "Imported – \(original.name) (\(timestamp))"
-            copy.isSystemCategory = false // Imported categories are never system categories
-            return copy
-        }
-
-        let allCategories = ContactsManager.shared.loadCategories() + prefixedCategories
-        ContactsManager.shared.saveCategories(allCategories)
-
-        DispatchQueue.main.async {
-            let contactCount = prefixedCategories.reduce(0) { $0 + $1.contacts.count }
-            let categoryCount = prefixedCategories.count
+        
+        var importedCategoryNames: [String] = []
+        var totalContactsImported = 0
+        var categoriesUpdated = 0
+        var categoriesCreated = 0
+        
+        for importedCategory in contacts {
+            // Skip system categories from import (don't duplicate Emergency)
+            if importedCategory.isSystemCategory {
+                continue
+            }
             
-            // FIXED: Send notification to update UI
+            // Check if category already exists (case-insensitive)
+            if let existingIndex = allCategories.firstIndex(where: {
+                $0.name.lowercased() == importedCategory.name.lowercased()
+            }) {
+                // Merge contacts into existing category
+                allCategories[existingIndex].contacts.append(contentsOf: importedCategory.contacts)
+                importedCategoryNames.append(allCategories[existingIndex].name)
+                totalContactsImported += importedCategory.contacts.count
+                categoriesUpdated += 1
+            } else {
+                // Create new category (without timestamp prefix for better organization)
+                var newCategory = importedCategory
+                newCategory.isSystemCategory = false
+                allCategories.append(newCategory)
+                importedCategoryNames.append(newCategory.name)
+                totalContactsImported += newCategory.contacts.count
+                categoriesCreated += 1
+            }
+        }
+        
+        // Save the updated categories
+        ContactsManager.shared.saveCategories(allCategories)
+        
+        DispatchQueue.main.async {
+            // Send notification to update UI
             NotificationCenter.default.post(name: NSNotification.Name("ContactsImported"), object: nil, userInfo: [
-                "categoryName": prefixedCategories.first?.name ?? "Imported JSON",
-                "contactCount": contactCount,
+                "categoryName": importedCategoryNames.first ?? "Imported",
+                "contactCount": totalContactsImported,
                 "generatedNames": 0,
                 "skippedRows": 0
             ])
             
-            let message = contactCount == 1
-                ? "1 contact imported from \(fileName)."
-                : "\(contactCount) contacts imported from \(fileName) in \(categoryCount) \(categoryCount == 1 ? "category" : "categories")."
+            // Build detailed message
+            var message = ""
+            if totalContactsImported == 1 {
+                message = "1 contact imported from \(fileName)."
+            } else {
+                message = "\(totalContactsImported) contacts imported from \(fileName)."
+            }
+            
+            if categoriesUpdated > 0 {
+                message += "\n\n• Added to \(categoriesUpdated) existing \(categoriesUpdated == 1 ? "category" : "categories")"
+            }
+            
+            if categoriesCreated > 0 {
+                message += "\n\(categoriesUpdated > 0 ? "• " : "\n")Created \(categoriesCreated) new \(categoriesCreated == 1 ? "category" : "categories")"
+            }
             
             let alert = UIAlertController(
                 title: "Contacts Imported Successfully",
@@ -175,7 +210,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             )
             
             alert.addAction(UIAlertAction(title: "View Imported", style: .default) { _ in
-                if let firstCategoryName = prefixedCategories.first?.name {
+                if let firstCategoryName = importedCategoryNames.first {
                     NotificationCenter.default.post(name: NSNotification.Name("NavigateToImportedContacts"), object: firstCategoryName)
                 }
             })
@@ -189,7 +224,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
     
-    // MARK: - Enhanced CSV Import Handling
+    
+
+    
+
     // MARK: - Enhanced CSV Import Handling
     private func handleCSVImport(from url: URL) {
         print("🔄 Starting CSV import from: \(url)")
