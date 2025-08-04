@@ -42,7 +42,7 @@ struct HelpContent {
                 The app works entirely offline, making it reliable in areas with poor connectivity. Only tide and wind data features require internet access.
                 
                 📱 Important File Import Tip:
-                When receiving .json or .csv files through messaging apps (Signal, iMessage, WhatsApp), you'll need to save them to the Files app first, then share to Ship Pilot Checklists. This extra step is required due to iOS security. See Import & Export help section for details.
+                When receiving .json or .csv files through messaging apps (Signal, iMessage, WhatsApp), you MUST save them to the native Files app first, then share to Ship Pilot Checklists. This extra step is required due to iOS security. See Import & Export help section for details.
                 """
             ),
             HelpTopic(
@@ -1319,7 +1319,7 @@ struct HelpContent {
                 ✅ Files App → Ship Pilot: ALWAYS WORKS
                 ✅ Email → Ship Pilot: Usually works directly
                 ✅ AirDrop → Ship Pilot: Works directly
-                ⚠️ Messaging Apps → Ship Pilot: Often fails
+                ⚠️ Messaging Apps → Ship Pilot: Often FAILS
                 ✅ Messaging Apps → Files App → Ship Pilot: ALWAYS WORKS
                 
                 Supported File Formats:

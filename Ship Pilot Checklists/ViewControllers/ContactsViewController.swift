@@ -876,7 +876,7 @@ class ContactsViewController: UIViewController, CNContactPickerDelegate {
         let activityVC = UIActivityViewController(
             activityItems: [
                 fileURL,
-                "Ship Pilot Contacts Export\n\n📋 This file contains contacts from Ship Pilot Checklists app.\n\n📱 To import on another device:\n1. Save this file\n2. Open Ship Pilot Checklists app\n3. File will auto-import when opened\n\n💡 You can also share this file from the Files app directly to Ship Pilot Checklists."
+                "Ship Pilot Contacts Export\n\n📋 This file contains contacts from Ship Pilot Checklists app.\n\n📱 To import on your device:\n1. Save this file to your on device Files.\n2. Go to Files and share contacat file with Ship Pilot Checklists. app\n3. File will auto-import when opened.\n"
             ],
             applicationActivities: nil
         )

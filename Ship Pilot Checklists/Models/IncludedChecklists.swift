@@ -552,13 +552,13 @@ public struct IncludedChecklists {
             sections: [
                 ChecklistSection(title: "High Priority", items: [
                     ChecklistItem(title: "Take notes / start an audio recording (when able)", isChecked: false),
-                    ChecklistItem(title: "Tsunami alert received from the National Tsunami Warning Center (NTWC)", isChecked: false),
+                    ChecklistItem(title: "Tsunami alert received from the National Tsunami Warning Center (NTWC), continue to monitor emergency frequencies", isChecked: false),
                     ChecklistItem(title: "Determine and log ship’s position", isChecked: false),
                     ChecklistItem(title: "Determine navigational / traffic hazards", isChecked: false),
                     ChecklistItem(title: "Engage manual steering, engines and thrusters on standby", isChecked: false),
                     ChecklistItem(title: "Extend stabilizers (if available)", isChecked: false),
                     ChecklistItem(title: "Secure the anchors", isChecked: false),
-                    ChecklistItem(title: "Close watertight doors, weather tight doors, all external openings, and hatches", isChecked: false),
+                    ChecklistItem(title: "Close watertight doors, weather tight doors, all external openings, deadlights / window covers, and hatches", isChecked: false),
                     ChecklistItem(title: "If at a berth, get the ship underway", isChecked: false),
                     ChecklistItem(title: "Move the ship to open water in greater than 100 meters depth and 0.5 nm from shore (avoid constricted channels)", isChecked: false),
                     ChecklistItem(title: "Position the ship into the face of the anticipated tsunami wave, be prepared for large wave heights and strong currents", isChecked: false),

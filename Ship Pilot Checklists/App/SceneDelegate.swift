@@ -150,28 +150,28 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         var categoriesCreated = 0
         
         for importedCategory in contacts {
-            // Skip system categories from import (don't duplicate Emergency)
-            if importedCategory.isSystemCategory {
-                continue
-            }
-            
             // Check if category already exists (case-insensitive)
             if let existingIndex = allCategories.firstIndex(where: {
                 $0.name.lowercased() == importedCategory.name.lowercased()
             }) {
-                // Merge contacts into existing category
+                // Merge contacts into existing category (including Emergency!)
                 allCategories[existingIndex].contacts.append(contentsOf: importedCategory.contacts)
                 importedCategoryNames.append(allCategories[existingIndex].name)
                 totalContactsImported += importedCategory.contacts.count
                 categoriesUpdated += 1
             } else {
-                // Create new category (without timestamp prefix for better organization)
-                var newCategory = importedCategory
-                newCategory.isSystemCategory = false
-                allCategories.append(newCategory)
-                importedCategoryNames.append(newCategory.name)
-                totalContactsImported += newCategory.contacts.count
-                categoriesCreated += 1
+                // Only create new category if it's not a system category
+                // This prevents creating duplicate Emergency categories
+                if !importedCategory.isSystemCategory {
+                    var newCategory = importedCategory
+                    newCategory.isSystemCategory = false
+                    allCategories.append(newCategory)
+                    importedCategoryNames.append(newCategory.name)
+                    totalContactsImported += newCategory.contacts.count
+                    categoriesCreated += 1
+                }
+                // If it IS a system category that doesn't exist, skip it entirely
+                // (This shouldn't happen in normal use since Emergency always exists)
             }
         }
         
