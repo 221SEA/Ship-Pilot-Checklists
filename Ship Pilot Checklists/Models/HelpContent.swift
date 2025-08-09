@@ -41,7 +41,7 @@ struct HelpContent {
                 
                 The app works entirely offline, making it reliable in areas with poor connectivity. Only tide and wind data features require internet access.
                 
-                📱 Important File Import Tip:
+                Important File Import Tip:
                 When receiving .json or .csv files through messaging apps (Signal, iMessage, WhatsApp), you MUST save them to the native Files app first, then share to Ship Pilot Checklists. This extra step is required due to iOS security. See Import & Export help section for details.
                 """
             ),
@@ -70,9 +70,6 @@ struct HelpContent {
                 Why This Matters:
                 • Emergency SMS messages include your name for identification
                 • PDF reports show professional headers with your information
-                • Profile photo provides quick visual identification
-                • Coast Guard and emergency responders can quickly identify you
-                • Vessel agents receive properly formatted documentation
                 
                 Navigation:
                 • Use the "Done" button to return to the main screen
@@ -101,7 +98,7 @@ struct HelpContent {
                 • Sun/Moon - Switch between day and night themes
                 
                 Profile Photo Display:
-                • Once you add a profile photo, it replaces the generic person icon
+                • Once you add a profile photo, it replaces the generic profile icon
                 • Photo appears as a circular image in the navigation bar
                 • Tap your photo to access profile settings
                 • Photo updates immediately when changed
@@ -128,7 +125,7 @@ struct HelpContent {
                 • All progress is automatically saved as you work
                 
                 Enhanced Features:
-                • Add photos to document conditions (camera icon next to each item)
+                • Add photos to document conditions (image icon next to each item)
                 • Add quick notes to specific items (pencil icon)
                 • Use the main Notes section for general observations
                 • Record voice memos while working through checklists
@@ -149,10 +146,10 @@ struct HelpContent {
                 content: "Key tips to get the most out of Ship Pilot Checklists from day one. Save time and avoid common issues with these essential practices.",
                 screenshot: UIImage(named: "help_quick_tips"),
                 detailedContent: """
-                🌟 Top 5 Tips for New Users:
+                Top 5 Tips for New Users:
                 
-                1. 📱 File Import Tip:
-                When teammates share .json or .csv files via messaging apps:
+                1. File Import Tip:
+                When colleagues share .json or .csv files via messaging apps:
                 • Save the file to your Files app first
                 • Then share it to Ship Pilot Checklists
                 • Direct imports from messaging apps often fail
@@ -197,36 +194,6 @@ struct HelpContent {
                 content: "The app includes professionally developed emergency and standard checklists created by experienced maritime pilots for real-world situations.",
                 screenshot: UIImage(named: "help_included_checklists_menu"),
                 detailedContent: """
-                Emergency Checklists Include:
-                • Abandon Ship - Complete evacuation procedures
-                • Allision - Contact with fixed objects
-                • Anchor Dragging - Emergency anchoring situations
-                • Blackout - Total power loss procedures
-                • Collision - Ship-to-ship contact procedures
-                • Distress Call Emergency Assistance - Responding to other vessels
-                • Excessive Heel - Stability emergencies
-                • Fire - Comprehensive fire response
-                • Flooding - Damage control procedures
-                • GPS Failure/Spoofing - Navigation equipment failure
-                • Grounding - Emergency grounding response
-                • Gyro Failure - Compass system failure
-                • Loss of Propulsion - Engine failure procedures
-                • Loss of Steering - Steering system failure
-                • Man Overboard - Person overboard response
-                • Medevac via Helicopter - Medical evacuation procedures
-                • Medevac to Shore - Shore-based medical transfer
-                • Mooring Breakaway from Berth - Emergency departure
-                • Tsunami Warning - Natural disaster response
-                
-                Standard Checklists Include:
-                • Change of Conn - Watch relief procedures
-                • Master Pilot Exchange (MPX) - Boarding procedures
-                • Restricted Visibility - Fog and low visibility operations
-                • Pilot Transfer Area - Safe transfer zone assessment
-                • Pilot Prep for Embarkation - Personal safety preparation
-                • Pilot Ladder Inspection - Safety equipment verification
-                • Pilot Prep for Disembarkation - Safe departure preparation
-                
                 Each checklist is organized by priority:
                 • High Priority - Immediate safety-critical actions
                 • Medium Priority - Important follow-up actions  
@@ -247,7 +214,7 @@ struct HelpContent {
                 5. Drag items between sections or reorder within sections
                 6. Tap "Save" when complete
                 
-                Editing Existing Checklists:
+                Editing Custom Checklists:
                 • Tap the pencil icon next to any custom checklist
                 • Add, remove, or reorder items by dragging
                 • Edit text by tapping in any text field
@@ -336,7 +303,7 @@ struct HelpContent {
                 
                 Clearing Checklists:
                 1. Open any checklist
-                2. Tap the eraser icon in the bottom toolbar
+                2. Tap the eraser icon in the bottom right toolbar
                 3. Confirm the clear action
                 4. ALL checks, notes, and photos will be removed
                 
@@ -367,7 +334,7 @@ struct HelpContent {
                 screenshot: UIImage(named: "help_photo_picker"),
                 detailedContent: """
                 Adding Photos:
-                1. Tap the camera icon next to any checklist item
+                1. Tap the image icon next to any checklist item
                 2. Choose "Camera" to take a new photo or "Photo Library" to select existing photos
                 3. For photo library: Select multiple photos (up to your remaining limit)
                 4. Photos appear as thumbnails below the checklist item
@@ -405,7 +372,6 @@ struct HelpContent {
                 4. Notes appear below the checklist item in italic text
                 
                 When to Use Item Notes:
-                • Specific equipment readings (e.g., "Engine room reports 15-degree list")
                 • Time-sensitive observations (e.g., "Started at 1430 local")
                 • Equipment status details (e.g., "Starboard thruster not responding")
                 • Communication details (e.g., "Contacted Port Control on Ch. 12")
@@ -415,7 +381,6 @@ struct HelpContent {
                 • Unlimited text length for detailed observations
                 • Automatic saving as you type
                 • Notes included in PDF reports under each item
-                • Preserved when clearing checklists if you regenerate them
                 • Searchable through the main search function
                 
                 Professional Tip:
@@ -431,7 +396,7 @@ struct HelpContent {
                 Main Notes Features:
                 • Expandable/collapsible section at bottom of every checklist
                 • Free-form text entry for general observations
-                • Automatic integration of location, tide, and wind data
+                • Integration of location, tide, and wind data
                 • Included as separate section in PDF reports
                 
                 Typical Uses:
@@ -455,7 +420,7 @@ struct HelpContent {
             HelpTopic(
                 id: "location_and_gps",
                 title: "GPS Location Data",
-                content: "Add precise GPS coordinates to document your exact position during incidents or operations. Essential for emergency response and official reports.",
+                content: "Add precise GPS coordinates to document your exact position during incidents or operations.",
                 screenshot: UIImage(named: "help_gps_location"),
                 detailedContent: """
                 Adding GPS Location:
@@ -466,14 +431,13 @@ struct HelpContent {
                 
                 GPS Information Included:
                 • Latitude and longitude in decimal degrees (4 decimal places)
-                • Accuracy reading (typically ±3-10 meters for marine GPS)
+                • Accuracy reading (typically ±3-10 meters)
                 • Local time when position was recorded
-                • Automatic formatting for professional documentation
                 
                 Location Requirements:
                 • Clear view of sky for GPS satellite reception
                 • Location permissions enabled in device settings
-                • May take longer in poor weather or near large structures
+                • May take longer in poor weather or near large structures or in fjords
                 • 30-second timeout prevents indefinite searching
                 
                 Emergency Use:
@@ -483,7 +447,6 @@ struct HelpContent {
                 • Medical evacuation planning
                 • Post-incident investigation documentation
                 
-                The app uses high-accuracy GPS suitable for marine navigation and emergency response.
                 """
             ),
             HelpTopic(
@@ -513,7 +476,6 @@ struct HelpContent {
                 Information Included:
                 • Tide: Times and heights for high/low water in local time
                 • Wind: Direction and speed in knots for current and next forecast periods
-                • Data formatted for professional maritime documentation
                 • Includes source station identification
                 
                 Requirements:
