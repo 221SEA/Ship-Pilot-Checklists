@@ -94,6 +94,18 @@ You can also customize the app's main screen title and add photos.
         setupKeyboardObservers()
         loadPhotos()
     }
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        // Update table header view frame when view layout changes
+        if let headerView = tableView.tableHeaderView {
+            let size = headerView.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+            if headerView.frame.size.height != size.height {
+                headerView.frame.size.height = size.height
+                tableView.tableHeaderView = headerView
+            }
+        }
+    }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
@@ -231,6 +243,11 @@ You can also customize the app's main screen title and add photos.
         updateSaveButtonState()
     }
 
+
+
+    
+
+
     private func setupTableView() {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.dataSource = self
@@ -244,9 +261,7 @@ You can also customize the app's main screen title and add photos.
 
         // Create header with profile photo
         let headerView = UIView()
-        headerView.addSubview(profileImageView)
-        headerView.addSubview(instructionLabel)
-
+        
         // Add hint label below profile photo
         let photoHintLabel = UILabel()
         photoHintLabel.text = "Tap to add photo"
@@ -254,10 +269,19 @@ You can also customize the app's main screen title and add photos.
         photoHintLabel.textColor = .systemGray
         photoHintLabel.textAlignment = .center
         photoHintLabel.translatesAutoresizingMaskIntoConstraints = false
-        headerView.addSubview(photoHintLabel)
-
+        
         profileImageView.translatesAutoresizingMaskIntoConstraints = false
         instructionLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        headerView.addSubview(profileImageView)
+        headerView.addSubview(photoHintLabel)
+        headerView.addSubview(instructionLabel)
+
+        // Calculate actual width for instruction label on iPad
+        let screenWidth = UIScreen.main.bounds.width
+        let instructionMaxWidth = min(screenWidth - 32, 600)
+        let instructionLeadingPadding = UIDevice.current.userInterfaceIdiom == .pad ?
+            (screenWidth - instructionMaxWidth) / 2 : 16
 
         NSLayoutConstraint.activate([
             profileImageView.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 20),
@@ -271,8 +295,8 @@ You can also customize the app's main screen title and add photos.
             photoHintLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerView.trailingAnchor, constant: -16),
             
             instructionLabel.topAnchor.constraint(equalTo: photoHintLabel.bottomAnchor, constant: 16),
-            instructionLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
-            instructionLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            instructionLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: instructionLeadingPadding),
+            instructionLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -instructionLeadingPadding),
             instructionLabel.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -12)
         ])
 
@@ -281,17 +305,21 @@ You can also customize the app's main screen title and add photos.
         profileImageView.isUserInteractionEnabled = true
         profileImageView.addGestureRecognizer(tapGesture)
         
-        // Calculate header height - Add extra height for iPad
-        let maxWidth = min(view.bounds.width - 32, 600) // Limit width on iPad
+        // Calculate header height using the actual constrained width
         let labelSize = instructionLabel.sizeThatFits(
-            CGSize(width: maxWidth, height: .greatestFiniteMagnitude)
+            CGSize(width: instructionMaxWidth, height: .greatestFiniteMagnitude)
         )
         
         // Add extra padding for iPad
         let basePadding: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 30 : 20
-        let headerHeight = 100 + basePadding + 4 + 12 + 16 + labelSize.height + 12
+        // Components: profileImage(100) + topPadding + hintLabel(~15) + spacing(4) + spacing(16) + instructionLabel + bottomPadding(12)
+        let headerHeight = 100 + basePadding + 4 + 15 + 16 + labelSize.height + 12
         
-        headerView.frame = CGRect(x: 0, y: 0, width: view.bounds.width, height: headerHeight)
+        headerView.frame = CGRect(x: 0, y: 0, width: screenWidth, height: headerHeight)
+        
+        // Force the header view to layout its subviews
+        headerView.setNeedsLayout()
+        headerView.layoutIfNeeded()
         
         tableView.tableHeaderView = headerView
 
@@ -301,12 +329,6 @@ You can also customize the app's main screen title and add photos.
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        
-        // Force layout update for iPad
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            headerView.setNeedsLayout()
-            headerView.layoutIfNeeded()
-        }
     }
 
     // MARK: - Actions
