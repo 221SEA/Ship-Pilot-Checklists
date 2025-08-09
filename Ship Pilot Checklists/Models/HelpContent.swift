@@ -48,29 +48,42 @@ struct HelpContent {
             HelpTopic(
                 id: "first_time_setup",
                 title: "Setting Up Your Profile",
-                content: "Before using emergency features, set up your pilot profile with your name and emergency contacts. This information is used in SMS messages and PDF reports.",
+                content: "Before using emergency features, set up your pilot profile with your name, organization, and emergency contacts. Add photos and customize the app's appearance.",
                 screenshot: UIImage(named: "help_profile_setup"),
                 detailedContent: """
                 Essential Setup Steps:
                 
                 1. Tap the profile icon (person) in the top navigation bar
-                2. Enter your name - this appears in SMS messages and PDF headers
-                3. Enter your pilot group/organization (optional but recommended)
-                4. Add emergency contacts in the Contacts section
+                2. Enter your title (Pilot, Captain, Watch Officer, or Crew)
+                3. Enter your name - this appears in SMS messages and PDF headers
+                4. Enter your organization (optional but recommended)
+                5. Add a profile photo (tap the profile image to add)
+                6. Enter vessel information if desired
+                7. Add emergency contacts in the Contacts section
+                
+                New Profile Features:
+                • Profile Photo - Your photo appears in the main screen navigation bar
+                • Title Selection - Choose from standard maritime titles
+                • Vessel Photo - Add vessel photo for PDF documentation
+                • Main Screen Customization - Display organization or vessel name
                 
                 Why This Matters:
                 • Emergency SMS messages include your name for identification
                 • PDF reports show professional headers with your information
+                • Profile photo provides quick visual identification
                 • Coast Guard and emergency responders can quickly identify you
                 • Vessel agents receive properly formatted documentation
                 
-                You can access profile settings anytime from the main menu.
+                Navigation:
+                • Use the "Done" button to return to the main screen
+                • Use the "Save" button to save changes (appears when you make edits)
+                • Changes auto-save when you leave the screen
                 """
             ),
             HelpTopic(
                 id: "navigation_basics",
                 title: "Navigation Basics",
-                content: "The main menu provides access to all app features. Use the top navigation buttons for search, help, profile, and theme switching.",
+                content: "The main menu provides access to all app features. Your profile photo appears in the navigation bar once set. Use the top navigation buttons for search, help, profile, and theme switching.",
                 screenshot: UIImage(named: "help_main_navigation"),
                 detailedContent: """
                 Main Menu Buttons:
@@ -84,8 +97,19 @@ struct HelpContent {
                 • Info (i) - App version and privacy information
                 • Question mark (?) - This help system
                 • Magnifying glass - Search all checklists
-                • Person icon - Your pilot profile settings
+                • Profile icon/photo - Your pilot profile settings (shows your photo once added)
                 • Sun/Moon - Switch between day and night themes
+                
+                Profile Photo Display:
+                • Once you add a profile photo, it replaces the generic person icon
+                • Photo appears as a circular image in the navigation bar
+                • Tap your photo to access profile settings
+                • Photo updates immediately when changed
+                
+                Custom Main Title:
+                • The main screen can display your organization or vessel name
+                • Set this in Profile > App Customization > Main Screen Title
+                • Choose between default "Ship Pilot", organization, or vessel name
                 
                 Night Mode:
                 The app includes a dedicated night mode designed for bridge operations. The night theme uses a dark background with green text for optimal visibility in low-light conditions.
@@ -1394,31 +1418,157 @@ struct HelpContent {
         topics: [
             HelpTopic(
                 id: "profile_setup_detailed",
-                title: "Setting Up Your Pilot Profile",
-                content: "Configure your pilot information for professional SMS messages and PDF report headers. Essential for emergency communications and official documentation.",
+                title: "Complete Profile Configuration",
+                content: "Set up your comprehensive pilot profile including photos, titles, and vessel information for professional SMS messages and PDF reports.",
                 screenshot: UIImage(named: "help_profile_settings"),
                 detailedContent: """
-                Profile Information Required:
-                • Pilot Name - Your full name as it should appear in official documents
-                • Pilot Group - Your organization, association, or company name
+                Profile Information Sections:
                 
-                Profile Usage:
-                • Emergency SMS messages include your name for identification
-                • PDF report headers show professional formatting
+                PROFILE INFORMATION:
+                • Title - Select from Pilot, Captain, Watch Officer, or Crew
+                • Name - Your full name as it should appear in documents
+                • Organization (Optional) - Your company or pilot association
+                • Profile Photo - Tap the large circular image to add your photo
                 
-                Accessing Profile Settings:
-                • Tap person icon in top navigation bar from main menu
-                • Available from any screen via navigation
-                • Changes automatically saved
-                • Required fields validated before emergency use
+                VESSEL INFORMATION:
+                • Vessel Name (Optional) - Current vessel you're working on
+                • Vessel Photo - Add a photo that appears in PDF reports
+                
+                APP CUSTOMIZATION:
+                • Main Screen Title - Choose what displays at the top of the main screen
+                  - Ship Pilot (Default)
+                  - Your organization name
+                  - Current vessel name
+                
+                EMERGENCY CONTACTS:
+                • Quick link to manage your emergency contacts
+                • These contacts appear first in emergency SMS selection
+                
+                Profile Photo Features:
+                • Tap "Tap to add photo" below the profile image
+                • Choose from camera or photo library
+                • Photo appears in main screen navigation bar
+                • Circular display with professional appearance
+                • Can be removed or replaced anytime
+                
+                Vessel Photo Features:
+                • Tap "Vessel Photo" row to add
+                • Appears in generated PDF reports
+                • Small thumbnail preview in settings
+                • Professional documentation enhancement
+                
+                Navigation and Saving:
+                • "Done" button - Returns to main screen (auto-saves changes)
+                • "Save" button - Appears when changes are made
+                • All changes persist between app sessions
+                • Profile syncs across all app features
                 
                 Privacy and Security:
                 • All profile information stored locally on device only
-                • No cloud storage or external transmission except in SMS/PDF you generate
-                • Complete control over when and how information is shared
-                • Information only appears in communications you initiate
+                • Photos compressed for optimal storage
+                • No cloud storage or external transmission
+                • Complete control over information sharing
+                """
+            ),
+            HelpTopic(
+                id: "profile_photos_management",
+                title: "Managing Profile and Vessel Photos",
+                content: "Add professional photos to personalize the app and enhance PDF documentation. Profile photos appear in navigation, vessel photos in reports.",
+                screenshot: UIImage(named: "help_photo_management"),
+                detailedContent: """
+                Adding Profile Photo:
+                1. Go to Profile settings (person icon in nav bar)
+                2. Tap the large circular image or "Tap to add photo"
+                3. Choose "Choose Photo" from the menu
+                4. Select from photo library or take new photo
+                5. Photo automatically cropped to circle
+                6. Appears immediately in navigation bar
                 
-                The app will prompt you to complete profile setup when attempting to use emergency features if information is missing.
+                Profile Photo Display:
+                • Circular 30x30 point display in navigation
+                • Replaces generic person icon
+                • Visible from all app screens
+                • Updates immediately when changed
+                • Professional appearance for identification
+                
+                Adding Vessel Photo:
+                1. In Profile settings, scroll to Vessel Information
+                2. Tap "Vessel Photo" row
+                3. Choose "Choose Photo" from menu
+                4. Select appropriate vessel image
+                5. 40x40 thumbnail appears in settings
+                6. Full size included in PDF reports
+                
+                Photo Management Options:
+                • Choose Photo - Select new or replacement photo
+                • Remove Photo - Delete current photo
+                • Cancel - Close menu without changes
+                
+                Photo Requirements:
+                • Any standard image format (JPEG, PNG, HEIF)
+                • Automatically resized for optimal storage
+                • Maximum dimension: 500 pixels (automatic)
+                • JPEG compression at 80% quality
+                • Typical file size: 50-100KB after processing
+                
+                Best Practices:
+                • Profile Photo: Professional headshot or uniform photo
+                • Vessel Photo: Clear exterior shot showing vessel name
+                • Good lighting for clarity
+                • Avoid backlit situations
+                • Update when changing vessels or roles
+                
+                Photo Storage:
+                • Stored in app's local documents
+                • No iCloud or external backup
+                • Persist through app updates
+                • Removed only when manually deleted
+                """
+            ),
+            HelpTopic(
+                id: "main_screen_customization",
+                title: "Customizing the Main Screen Title",
+                content: "Personalize the app's main screen to display your organization or vessel name instead of the default 'Ship Pilot' title.",
+                screenshot: UIImage(named: "help_main_screen_title"),
+                detailedContent: """
+                Main Screen Title Options:
+                • Ship Pilot (Default) - Standard app title
+                • Organization Name - Your company or pilot group
+                • Vessel Name - Current vessel you're working on
+                
+                Setting Custom Title:
+                1. Go to Profile settings
+                2. Scroll to App Customization section
+                3. Tap "Main Screen Title"
+                4. Select from available options:
+                   - Ship Pilot (Default)
+                   - Organization: [Your Organization Name]
+                   - Vessel: [Your Vessel Name]
+                5. Change applies immediately
+                
+                Requirements:
+                • Must enter organization name to use as title
+                • Must enter vessel name to use as title
+                • If selected field is empty, defaults to "Ship Pilot"
+                • Updates automatically when you change organization/vessel
+                
+                Use Cases:
+                • Company Branding - Show your pilot association
+                • Vessel Specific - Identify current assignment
+                • Multi-Pilot Vessels - Quick visual identification
+                • Corporate Requirements - Match company standards
+                
+                Title Display:
+                • Large bold text at top of main screen
+                • Maintains professional appearance
+                • Works in both day and night modes
+                • Consistent with app's design language
+                
+                Dynamic Updates:
+                • Title updates when returning to main screen
+                • Changes when you update organization/vessel info
+                • Remembers your preference between sessions
+                • No app restart required
                 """
             ),
             HelpTopic(
@@ -1436,17 +1586,25 @@ struct HelpContent {
                 • Change applies immediately to entire app
                 • Setting preserved between app sessions
                 • Independent of device system theme
+                • Profile photos display correctly in both modes
                 
                 Night Mode Benefits:
                 • Reduced eye strain in dark bridge conditions
                 • Green text preserves night vision
                 • Dark backgrounds minimize light emission
+                • Profile photos automatically adjust for visibility
                 
                 Day Mode Benefits:
                 • High contrast for bright daylight conditions
                 • Professional appearance for office use
                 • Clear visibility in well-lit conditions
-
+                • Photos display with full color accuracy
+                
+                Profile Integration:
+                • Navigation bar adapts to current theme
+                • Profile photo remains visible in both modes
+                • Button tints adjust for optimal contrast
+                • All UI elements maintain readability
                 
                 The theme setting is independent of your device's system-wide dark mode setting, giving you complete control optimized for maritime operations.
                 """
@@ -1454,7 +1612,7 @@ struct HelpContent {
             HelpTopic(
                 id: "app_permissions_and_privacy",
                 title: "App Permissions and Privacy",
-                content: "The app requires specific permissions for GPS, camera, and microphone features. All data remains on your device with no external transmission except features you control.",
+                content: "The app requires specific permissions for GPS, camera, microphone, and photos. All data including profile photos remains on your device with no external transmission.",
                 screenshot: UIImage(named: "help_permissions_screen"),
                 detailedContent: """
                 Required Permissions:
@@ -1466,7 +1624,8 @@ struct HelpContent {
                 • Required for tide and wind data features
                 
                 Camera Access:
-                • Used only for taking photos to attach to checklist items
+                • Used for taking photos to attach to checklist items
+                • Used for taking profile and vessel photos
                 • No automatic photo capture
                 • Photos stored locally in app documents
                 • No photo transmission except in reports you generate
@@ -1478,9 +1637,11 @@ struct HelpContent {
                 • No audio transmission except files you share
                 
                 Photo Library Access:
-                • Used only for selecting existing photos for checklist items
+                • Used for selecting existing photos for checklist items
+                • Used for selecting profile and vessel photos
                 • No automatic photo access or scanning
                 • Only accessed when you choose "Photo Library" option
+                • Selected photos copied to app storage
                 
                 Contacts Access:
                 • Used only when you choose to import contacts
@@ -1490,75 +1651,89 @@ struct HelpContent {
                 
                 Privacy Guarantees:
                 • All data stored locally on your device only
+                • Profile photos stored in app documents
                 • No cloud storage or external servers
                 • No data transmission except SMS and files you explicitly share
                 • No analytics, tracking, or usage monitoring
                 • No advertising or third-party data sharing
                 • Complete offline functionality for all core features
                 
+                Profile Photo Privacy:
+                • Photos processed and stored locally
+                • Automatic resizing preserves privacy
+                • No facial recognition or analysis
+                • No metadata extraction or storage
+                • Photos only appear where you expect them
+                
                 Data Control:
                 You have complete control over:
-                • When location is accessed (only when you tap globe icon)
+                • When location is accessed
                 • What photos are taken or selected
                 • When voice recordings are made
                 • Which contacts are imported
                 • What information is included in SMS or PDF reports
                 • When and how files are shared
+                • What profile information is displayed
                 
-                This privacy-first approach ensures your operational data remains under your complete control.
+                This privacy-first approach ensures your operational and personal data remains under your complete control.
                 """
             ),
             HelpTopic(
-                id: "app_settings_and_preferences",
-                title: "App Settings and Customization",
-                content: "Customize the app's behavior and appearance to match your operational preferences and workflow requirements.",
-                screenshot: UIImage(named: "help_app_settings"),
+                id: "profile_navigation_tips",
+                title: "Profile Navigation and Workflow",
+                content: "Efficiently navigate the enhanced profile settings with new Done button and auto-save features for improved workflow.",
+                screenshot: UIImage(named: "help_profile_navigation"),
                 detailedContent: """
-                Available Settings:
+                Navigation Buttons:
                 
-                Theme Selection:
-                • Day Mode - Light theme for bright conditions
-                • Night Mode - Dark theme with green text for bridge operations
-                • Independent of device system settings
-                • Instant switching via navigation bar button
+                Done Button (Left):
+                • Always visible in profile settings
+                • Returns you to the main screen
+                • Automatically saves any changes
+                • Primary way to exit profile settings
+                • Maintains your place in the app
                 
-                Text Size Options (in Help):
-                • Small - Compact display for smaller screens
-                • Medium - Standard comfortable reading
-                • Large - Enhanced visibility for accessibility
+                Save Button (Right):
+                • Appears only when changes are made
+                • Grayed out when no changes to save
+                • Becomes active (white) with unsaved changes
+                • Provides immediate save confirmation
+                • Shows green checkmark animation
                 
-                Default Behaviors:
-                • Automatic progress saving for all checklists
-                • Timestamp format includes local time and GMT offset
-                • Emergency contacts always prioritized in SMS selection
-                • Voice recordings automatically named with checklist and date
+                Auto-Save Feature:
+                • Changes save automatically when tapping Done
+                • No need to manually save before leaving
+                • Prevents loss of profile updates
+                • Works even if app is interrupted
                 
-                File Organization:
-                • Standardized naming convention for all generated files
-                • Automatic sorting by date (newest first)
-                • Filter options for file type (PDF, Audio, All)
-                • Local storage only - no cloud synchronization
+                Navigation Flow:
+                1. Main Screen → Tap profile icon/photo
+                2. Make your changes in profile settings
+                3. Save button activates when changes detected
+                4. Either:
+                   - Tap Save for immediate confirmation
+                   - Tap Done to save and return
+                   - Changes saved either way
                 
-                Contact Management:
-                • Automatic usage tracking for emergency prioritization
-                • Protected Emergency category cannot be modified
-                • Drag-and-drop organization enabled
-                • Search functionality across all contact fields
+                Save Confirmation:
+                • Green checkmark appears briefly
+                • "Saved" message displays
+                • Automatic dismissal after confirmation
+                • Save button returns to gray state
                 
-                Operational Preferences:
-                • All sections start expanded in checklists for quick access
-                • Notes section collapsible to maximize checklist space
-                • Camera integration with immediate photo preview
-                • Multi-photo selection from photo library
-                • Automatic keyboard dismissal for efficient workflow
+                Workflow Tips:
+                • Use Done for quick profile visits
+                • Use Save when making multiple changes
+                • Save button state shows pending changes
+                • No "Cancel" - use Done to keep changes
+                • Profile photo updates show immediately
                 
-                Reset Options:
-                • Clear individual checklists (eraser icon in toolbar)
-                • No mass data reset to prevent accidental loss
-                • Contact data preserved separately from checklist progress
-                • Profile information maintained across checklist clears
+                Section Navigation:
+                • Scroll to access all sections
+                • Tap section headers for context
+                • Use table cell taps for selections
+                • Keyboard dismisses on scroll
                 
-                These settings ensure the app adapts to your specific operational requirements and preferences.
                 """
             )
         ]

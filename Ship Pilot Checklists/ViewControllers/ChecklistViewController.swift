@@ -740,12 +740,18 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
 
     // MARK: — Send SMS
 
+    // MARK: - Updated Emergency SMS Method
     private func sendEmergencyText(to contacts: [EmergencyContact], withSituation situation: String, vesselName: String) {
         guard MFMessageComposeViewController.canSendText() else {
             showAlert(title: "Cannot Send Message", message: "Your device cannot send SMS.")
             return
         }
 
+        // Get formatted user info
+        let userTitle = UserDefaults.standard.string(forKey: "userTitle") ?? "Pilot"
+        let userName = UserDefaults.standard.string(forKey: "userName") ?? ""
+        let fullName = "\(userTitle) \(userName)".trimmingCharacters(in: .whitespaces)
+        let nameDisplay = fullName.isEmpty ? "Unknown" : fullName
 
         // build body
         var locationStr = "Location: Not Available"
@@ -758,12 +764,19 @@ class ChecklistViewController: UIViewController, UITableViewDataSource, UITableV
         let situationLine = "Situation: \(situation.isEmpty ? "Not provided" : situation)"
 
         var bodyLines: [String] = [
-                "Pilot: \(pilotName)",
-                "Vessel: \(vesselName)",
-                "Checklist: \(checklist?.title ?? customChecklist?.title ?? "?")",
-                locationStr,
-                situationLine
-            ]
+            "\(userTitle): \(nameDisplay)",
+            "Vessel: \(vesselName)",
+            "Checklist: \(checklist?.title ?? customChecklist?.title ?? "?")",
+            locationStr,
+            situationLine
+        ]
+        
+        // Add organization if present
+        let organization = UserDefaults.standard.string(forKey: "organization") ?? ""
+        if !organization.isEmpty {
+            bodyLines.insert("Organization: \(organization)", at: 1)
+        }
+        
         // tides
         bodyLines.append("")
         bodyLines.append(lastFetchedTideStationName.map { "\($0) Tides:" } ?? "Predicted Tides:")
@@ -1877,15 +1890,25 @@ extension ChecklistViewController {
         }
     }
 
-    // IMPORTANT: Make this internal so MainViewController can call it
+    // MARK: - Update promptForVesselAndGeneratePDF to use stored vessel name
     func promptForVesselAndGeneratePDF() {
-        promptForVesselName(
-            title: "Generate PDF",
-            message: "What vessel are you on?",
-            allowSkip: false
-        ) { vesselName in
-            self.pendingVesselName = vesselName
+        // Check if vessel name is already stored in profile
+        let storedVesselName = UserDefaults.standard.string(forKey: "vesselName") ?? ""
+        
+        if !storedVesselName.isEmpty {
+            // Use stored vessel name
+            self.pendingVesselName = storedVesselName
             self.askAboutCaptainSignature()
+        } else {
+            // Prompt for vessel name as before
+            promptForVesselName(
+                title: "Generate PDF",
+                message: "What vessel are you on?",
+                allowSkip: false
+            ) { vesselName in
+                self.pendingVesselName = vesselName
+                self.askAboutCaptainSignature()
+            }
         }
     }
 
@@ -2041,29 +2064,84 @@ extension ChecklistViewController {
         }
     }
     
+    // MARK: - Updated PDF Header Drawing
     private func drawPDFHeaderWithWatermark(yStart: inout CGFloat, pageW: CGFloat, pageH: CGFloat, margin: CGFloat, vesselName: String) {
         // Draw watermark first
         drawWatermark(pageW: pageW, pageH: pageH)
         
-        let pilot = UserDefaults.standard.string(forKey: "pilotName") ?? "Unknown Pilot"
+        // Get user info with new format
+        let userTitle = UserDefaults.standard.string(forKey: "userTitle") ?? "Pilot"
+        let userName = UserDefaults.standard.string(forKey: "userName") ?? ""
+        let organization = UserDefaults.standard.string(forKey: "organization") ?? ""
+        
+        // Format the name line
+        let fullName = "\(userTitle) \(userName)".trimmingCharacters(in: .whitespaces)
+        let nameDisplay = fullName.isEmpty ? "Unknown" : fullName
+        
         let vessel = vesselName
         let date = DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short)
         let title = checklist?.title ?? customChecklist?.title ?? "?"
-        let headerLines = [title, "Pilot: \(pilot)", "Vessel: \(vessel)", "Date: \(date)"]
-        let fonts = [UIFont.boldSystemFont(ofSize:18)] + Array(repeating: UIFont.systemFont(ofSize:14), count:3)
+        
+        var headerLines = [title, "\(userTitle): \(nameDisplay)", "Vessel: \(vessel)", "Date: \(date)"]
+        
+        // Add organization if present
+        if !organization.isEmpty {
+            headerLines.insert("Organization: \(organization)", at: 2)
+        }
+        
+        let fonts = [UIFont.boldSystemFont(ofSize:18)] + Array(repeating: UIFont.systemFont(ofSize:14), count: headerLines.count - 1)
         
         yStart = margin
-        for (i,line) in headerLines.enumerated() {
-            let attrs: [NSAttributedString.Key:Any] = [.font: fonts[i], .foregroundColor: ThemeManager.themeColor]
-            let rect = CGRect(x: margin, y: yStart, width: pageW-2*margin, height: .greatestFiniteMagnitude)
-            let sz = line.boundingRect(with: rect.size,
-                                       options: [.usesLineFragmentOrigin],
-                                       attributes: attrs, context: nil)
-            line.draw(with: rect, options: [.usesLineFragmentOrigin], attributes: attrs, context: nil)
-            yStart += sz.height + 4
+        
+        // Check if vessel photo exists
+        let hasVesselPhoto = UserDefaults.standard.data(forKey: "vesselPhoto") != nil
+        
+        if hasVesselPhoto {
+            // Draw text on the left side
+            let textWidth = (pageW - 2*margin) * 0.6 // Use 60% width for text
+            
+            for (i, line) in headerLines.enumerated() {
+                let attrs: [NSAttributedString.Key:Any] = [.font: fonts[i], .foregroundColor: ThemeManager.themeColor]
+                let rect = CGRect(x: margin, y: yStart, width: textWidth, height: .greatestFiniteMagnitude)
+                let sz = line.boundingRect(with: rect.size,
+                                           options: [.usesLineFragmentOrigin],
+                                           attributes: attrs, context: nil)
+                line.draw(with: rect, options: [.usesLineFragmentOrigin], attributes: attrs, context: nil)
+                yStart += sz.height + 4
+            }
+            
+            // Draw vessel photo on the right side
+            if let vesselPhotoData = UserDefaults.standard.data(forKey: "vesselPhoto"),
+               let vesselImage = UIImage(data: vesselPhotoData) {
+                let photoSize: CGFloat = 80
+                let photoX = pageW - margin - photoSize
+                let photoY = margin
+                let photoRect = CGRect(x: photoX, y: photoY, width: photoSize, height: photoSize)
+                
+                // Draw with rounded corners
+                let path = UIBezierPath(roundedRect: photoRect, cornerRadius: 8)
+                path.addClip()
+                vesselImage.draw(in: photoRect)
+            }
+            
+            // Ensure yStart is below the photo
+            yStart = max(yStart, margin + 80 + 12)
+        } else {
+            // Original centered layout
+            for (i, line) in headerLines.enumerated() {
+                let attrs: [NSAttributedString.Key:Any] = [.font: fonts[i], .foregroundColor: ThemeManager.themeColor]
+                let rect = CGRect(x: margin, y: yStart, width: pageW-2*margin, height: .greatestFiniteMagnitude)
+                let sz = line.boundingRect(with: rect.size,
+                                           options: [.usesLineFragmentOrigin],
+                                           attributes: attrs, context: nil)
+                line.draw(with: rect, options: [.usesLineFragmentOrigin], attributes: attrs, context: nil)
+                yStart += sz.height + 4
+            }
         }
+        
         yStart += 8
     }
+
     
     private func drawPDFSections(
         _ sections: [ChecklistSection],
@@ -2473,6 +2551,7 @@ extension ChecklistViewController {
         present(nav, animated: true)
     }
     
+    // MARK: - Updated Signature Drawing
     private func drawSignatureSectionFixed(
         yStart: inout CGFloat,
         pageW: CGFloat,
@@ -2524,9 +2603,13 @@ extension ChecklistViewController {
         dateFormatter.timeStyle = .short
         let signatureDateTime = dateFormatter.string(from: Date())
         
-        // Pilot signature
-        let pilotName = UserDefaults.standard.string(forKey: "pilotName") ?? "Pilot"
-        "Pilot: \(pilotName)".draw(
+        // Pilot signature with updated format
+        let userTitle = UserDefaults.standard.string(forKey: "userTitle") ?? "Pilot"
+        let userName = UserDefaults.standard.string(forKey: "userName") ?? ""
+        let fullName = "\(userTitle) \(userName)".trimmingCharacters(in: .whitespaces)
+        let nameDisplay = fullName.isEmpty ? userTitle : fullName
+        
+        "\(userTitle): \(userName.isEmpty ? "Unknown" : userName)".draw(
             at: CGPoint(x: margin, y: yStart),
             withAttributes: [.font: boldFont, .foregroundColor: themeColor]
         )
@@ -2566,4 +2649,5 @@ extension ChecklistViewController {
             captainSig.draw(in: captainSigRect)
         }
     }
+
 }

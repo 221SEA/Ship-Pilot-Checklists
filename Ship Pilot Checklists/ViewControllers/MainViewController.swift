@@ -4,6 +4,8 @@ import UIKit
 //  MainViewController.swift
 //  Ship Pilot Checklists
 //
+//  Updated with custom title support
+//
 
 class MainViewController: UIViewController {
     
@@ -49,12 +51,22 @@ class MainViewController: UIViewController {
         loadNightModePreference()
         overrideUserInterfaceStyle = isNightMode ? .dark : .light
         setupNavigationBarButtons()
+        
+        // Listen for title updates
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateMainScreenTitle),
+            name: NSNotification.Name("UpdateMainScreenTitle"),
+            object: nil
+        )
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setToolbarHidden(true, animated: false)
         navigationController?.navigationBar.layoutIfNeeded()
+        updateMainScreenTitle()
+        updateProfileButton()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -67,6 +79,56 @@ class MainViewController: UIViewController {
         ThemeManager.apply(to: navigationController, traitCollection: traitCollection)
         setupNavigationBarButtons()
         setupMainView()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    // MARK: – Update Title
+    
+    @objc private func updateMainScreenTitle() {
+        if UserDefaults.standard.bool(forKey: "useCustomMainTitle") {
+            let customTitle = UserDefaults.standard.string(forKey: "mainScreenTitle") ?? "Ship Pilot"
+            titleLabel.text = customTitle
+        } else {
+            titleLabel.text = "Ship Pilot"
+        }
+    }
+  
+    private func updateProfileButton() {
+        // Check if user has a profile photo
+        if let profilePhotoData = UserDefaults.standard.data(forKey: "profilePhoto"),
+           let profileImage = UIImage(data: profilePhotoData) {
+            
+            // Create a circular image
+            let size = CGSize(width: 30, height: 30)
+            UIGraphicsBeginImageContextWithOptions(size, false, 0.0)
+            
+            let path = UIBezierPath(ovalIn: CGRect(origin: .zero, size: size))
+            path.addClip()
+            
+            profileImage.draw(in: CGRect(origin: .zero, size: size))
+            
+            let circularImage = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
+            
+            // Update the profile button with the image
+            if let rightBarItems = navigationItem.rightBarButtonItems,
+               rightBarItems.count >= 2 {
+                let profileButton = rightBarItems[0] // Profile is first in the array
+                profileButton.image = circularImage?.withRenderingMode(.alwaysOriginal)
+            }
+        } else {
+            // No profile photo, use default icon
+            if let rightBarItems = navigationItem.rightBarButtonItems,
+               rightBarItems.count >= 2 {
+                let profileButton = rightBarItems[0]
+                let tint: UIColor = traitCollection.userInterfaceStyle == .dark ? .green : .white
+                profileButton.image = UIImage(systemName: "person.crop.circle")
+                profileButton.tintColor = tint
+            }
+        }
     }
     
     // MARK: – Disclaimer & Layout
@@ -180,12 +242,17 @@ class MainViewController: UIViewController {
         toggle.tintColor = tint
         
         navigationItem.rightBarButtonItems = [profile, toggle]
-    }
+            
+            // Update profile button with photo if available
+            updateProfileButton()
+        }
+    
     @objc private func openSavedFiles() {
         let vc = SavedFilesViewController()
         applyUserInterfaceStyle(to: vc)
         navigationController?.pushViewController(vc, animated: true)
     }
+    
     @objc private func presentSearchViewController() {
         let searchVC = SearchViewController()
         let nav = UINavigationController(rootViewController: searchVC)
@@ -194,9 +261,9 @@ class MainViewController: UIViewController {
         present(nav, animated: true)
     }
     
-    @objc func openProfile() {  // ← This handles the nav bar button tap
+    @objc func openProfile() {
         let settingsVC = SettingsViewController()
-        settingsVC.cameFromPDFGeneration = true  // Simple profile opening
+        settingsVC.cameFromPDFGeneration = true
         let nav = UINavigationController(rootViewController: settingsVC)
         ThemeManager.apply(to: nav, traitCollection: nav.traitCollection)
         present(nav, animated: true)
