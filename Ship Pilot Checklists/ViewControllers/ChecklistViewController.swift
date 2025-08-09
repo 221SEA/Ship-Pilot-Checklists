@@ -930,7 +930,7 @@ extension ChecklistViewController {
     private func toggleItem(at indexPath: IndexPath) {
         // Create a custom timestamp with local time and GMT offset
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "HHmm"
+        dateFormatter.dateFormat = "HH:mm:ss"
         let localTime = dateFormatter.string(from: Date())
         
         // Get the GMT offset
@@ -2065,6 +2065,7 @@ extension ChecklistViewController {
     }
     
     // MARK: - Updated PDF Header Drawing
+    // MARK: - Fixed PDF Header Drawing
     private func drawPDFHeaderWithWatermark(yStart: inout CGFloat, pageW: CGFloat, pageH: CGFloat, margin: CGFloat, vesselName: String) {
         // Draw watermark first
         drawWatermark(pageW: pageW, pageH: pageH)
@@ -2118,10 +2119,18 @@ extension ChecklistViewController {
                 let photoY = margin
                 let photoRect = CGRect(x: photoX, y: photoY, width: photoSize, height: photoSize)
                 
-                // Draw with rounded corners
-                let path = UIBezierPath(roundedRect: photoRect, cornerRadius: 8)
-                path.addClip()
-                vesselImage.draw(in: photoRect)
+                // Save the current graphics state before clipping
+                if let context = UIGraphicsGetCurrentContext() {
+                    context.saveGState()
+                    
+                    // Draw with rounded corners
+                    let path = UIBezierPath(roundedRect: photoRect, cornerRadius: 8)
+                    path.addClip()
+                    vesselImage.draw(in: photoRect)
+                    
+                    // Restore the graphics state to remove the clipping
+                    context.restoreGState()
+                }
             }
             
             // Ensure yStart is below the photo
