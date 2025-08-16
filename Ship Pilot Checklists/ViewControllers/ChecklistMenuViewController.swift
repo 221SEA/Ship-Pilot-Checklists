@@ -13,6 +13,7 @@ class ChecklistMenuViewController: UIViewController {
 
     var emergencyChecklists: [ChecklistInfo] = []
     var standardChecklists:  [ChecklistInfo] = []
+    var postIncidentChecklists: [ChecklistInfo] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -24,7 +25,7 @@ class ChecklistMenuViewController: UIViewController {
     }
     
     private func loadChecklistsInBackground() {
-        guard emergencyChecklists.isEmpty && standardChecklists.isEmpty else { return }
+        guard emergencyChecklists.isEmpty && standardChecklists.isEmpty && postIncidentChecklists.isEmpty else { return }
         
         let indicator = UIActivityIndicatorView(style: .large)
         indicator.color = ThemeManager.titleColor(for: traitCollection)
@@ -36,10 +37,12 @@ class ChecklistMenuViewController: UIViewController {
             let allData = IncludedChecklists.all
             let emergency = allData.filter { $0.category == .emergency }
             let standard = allData.filter { $0.category == .standard }
+            let postIncident = allData.filter { $0.category == .postincident }
             
             DispatchQueue.main.async {
                 self.emergencyChecklists = emergency
                 self.standardChecklists = standard
+                self.postIncidentChecklists = postIncident
                 self.tableView.reloadData()
                 indicator.stopAnimating()
                 indicator.removeFromSuperview()
@@ -81,18 +84,34 @@ class ChecklistMenuViewController: UIViewController {
 
 extension ChecklistMenuViewController: UITableViewDataSource, UITableViewDelegate {
 
-    func numberOfSections(in tableView: UITableView) -> Int { 2 }
+    func numberOfSections(in tableView: UITableView) -> Int { 3 }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        return emergencyChecklists.isEmpty ? nil : (section == 0 ? "Emergency" : "Routine")
+        guard !emergencyChecklists.isEmpty || !standardChecklists.isEmpty || !postIncidentChecklists.isEmpty else { return nil }
+        switch section {
+        case 0: return "Emergency"
+        case 1: return "Routine"
+        case 2: return "Post Incident"
+        default: return nil
+        }
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return section == 0 ? emergencyChecklists.count : standardChecklists.count
+        switch section {
+        case 0: return emergencyChecklists.count
+        case 1: return standardChecklists.count
+        case 2: return postIncidentChecklists.count
+        default: return 0
+        }
     }
 
     private func checklistFor(indexPath: IndexPath) -> ChecklistInfo {
-        return indexPath.section == 0 ? emergencyChecklists[indexPath.row] : standardChecklists[indexPath.row]
+        switch indexPath.section {
+        case 0: return emergencyChecklists[indexPath.row]
+        case 1: return standardChecklists[indexPath.row]
+        case 2: return postIncidentChecklists[indexPath.row]
+        default: fatalError("Invalid section")
+        }
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {

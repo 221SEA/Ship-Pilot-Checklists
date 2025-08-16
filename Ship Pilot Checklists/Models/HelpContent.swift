@@ -84,7 +84,7 @@ struct HelpContent {
                 screenshot: UIImage(named: "help_main_navigation"),
                 detailedContent: """
                 Main Menu Buttons:
-                • Included Checklists - Professional emergency and standard checklists
+                • Included Checklists - Professional emergency, standard & post-incident checklists
                 • Custom Checklists - Create and edit your own checklists
                 • Favorites - Quick access to your most-used checklists
                 • Contacts - Manage emergency and operational contacts
@@ -191,7 +191,7 @@ struct HelpContent {
             HelpTopic(
                 id: "included_checklists_detailed",
                 title: "Professional Built-in Checklists",
-                content: "The app includes professionally developed emergency and standard checklists created by experienced maritime pilots for real-world situations.",
+                content: "The app includes professionally developed emergency, standard and post-incident checklists created by experienced maritime pilots for real-world situations.",
                 screenshot: UIImage(named: "help_included_checklists_menu"),
                 detailedContent: """
                 Each checklist is organized by priority:

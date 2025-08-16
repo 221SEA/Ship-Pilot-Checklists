@@ -7,6 +7,7 @@ import Foundation
 public enum ChecklistCategory: String, Codable {
     case emergency = "Emergency"
     case standard  = "Standard"
+    case postincident  = "Post Incident"
 }
 
 /// A lightweight, in‑memory representation of a built‑in checklist.
@@ -573,7 +574,36 @@ public struct IncludedChecklists {
             ]
         ),
 
-        // ───────────────────────────────────────────────
+        // Post Incident Checklists
+        ChecklistInfo(
+            title: "Post Incident",
+            category: .postincident,
+            sections: [
+                ChecklistSection(title: "High Priority", items: [
+                    ChecklistItem(title: "Take notes / start an audio recording (when able)", isChecked: false),
+                    ChecklistItem(title: "Limit all conversations to information needed to ensure the safety of the ship, personnel, and the environment (the ship’s VDR is recording)", isChecked: false),
+                    ChecklistItem(title: "Record the location and time of the incident and save on PPU", isChecked: false),
+                    ChecklistItem(title: "Pilot and master agree on, and ensure, the safety of the personnel, vessel(s), and the environment", isChecked: false),
+                    ChecklistItem(title: "Stabilize the vessel’s movements (e.g., anchored, secured to a dock, safely grounded, etc.)", isChecked: false),
+                    ChecklistItem(title: "Inform the CG, local authorities, and vessels in the area of traffic restrictions that might threaten the stability of the vessel", isChecked: false)
+                ]),
+                ChecklistSection(title: "Medium Priority", items: [
+                    ChecklistItem(title: "Advise pilot office [potential Pilot relief, schedule drug test, engage PR resources]", isChecked: false),
+                    ChecklistItem(title: "Note: Do NOT take any drug or alcohol test administered by the vessel.", isChecked: false),
+                    ChecklistItem(title: "Arrange for a relief pilot as quickly as possible", isChecked: false),
+                    ChecklistItem(title: "Be polite and professional when dealing with investigators: provide basic information (name, position as pilot, contact information, etc.) until consultation with legal counsel", isChecked: false),
+                    ChecklistItem(title: "Arrange for legal counsel and have present before speaking to investigators", isChecked: false),
+                    ChecklistItem(title: "Secure PPU and phone out of sight: they may be requested by investigators (do not dispose of them or delete any information)", isChecked: false),
+                    ChecklistItem(title: "If possible, take photos of ship’s bell book and log book", isChecked: false),
+                    ChecklistItem(title: "Record the personnel on the bridge involved in the incident", isChecked: false)
+                ]),
+                ChecklistSection(title: "Low Priority", items: [
+                    ChecklistItem(title: "Disembark the vessel as quickly as possible and take drug test", isChecked: false),
+                    ChecklistItem(title: "Preserve PPU / ECDIS recordings", isChecked: false),
+                    ChecklistItem(title: "Draft and submit incident report to requisite authorities", isChecked: false)
+                ])
+            ]
+        ),
         // Routine Checklists (alphabetical)
 
         ChecklistInfo(
